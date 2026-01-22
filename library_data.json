@@ -1,0 +1,20 @@
+{
+    "Books": [
+        {
+            "title": "The Alchemist",
+            "author": "Paulo Coelho",
+            "isbn": 9783161484100,
+            "quantity": 36,
+            "shelfNumber": 1
+        }
+    ],
+    "issuedBooks": [
+        {
+            "timeStamp": "2026-01-22 12:42:48",
+            "user": "Hassan Waheed Ali",
+            "rollNo": "321653",
+            "title": "The Alchemist",
+            "isbn": 9783161484100
+        }
+    ]
+}
