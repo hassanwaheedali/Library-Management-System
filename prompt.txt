@@ -1,0 +1,4 @@
+Remaining Features:
+Add member management (track who borrowed what)
+Save Data To JSON, Load Data From JSON
+Add ShelfNumber For Easiness
