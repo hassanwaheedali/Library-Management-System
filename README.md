@@ -15,6 +15,8 @@ A comprehensive Python-based Library Management System with role-based access co
 - **Add Students**: Register new students with username, password, and roll number
 - **Add Librarians**: Register librarian accounts with employee IDs
 - **View All Users**: Display complete list of all system users by role
+- **Change Password**: Update password for any user account (requires old password verification)
+- **Change Username**: Update username for any user account
 - **User Persistence**: All user data stored in separate JSON file
 
 ### Book Management (Admin & Librarian)
@@ -116,6 +118,8 @@ Manages the entire library system with three main collections:
 - `add_librarian()`: Register new librarian accounts
 - `add_student()`: Register new student accounts
 - `view_all_users()`: Display all users organized by role
+- `change_password()`: Update user password with old password verification
+- `change_username()`: Update user's display name
 
 **Book Management Methods:**
 
@@ -210,7 +214,9 @@ User Management:
 5. Add Student
 6. Add Librarian
 7. View All Users
-8. Logout
+8. Change Password
+9. Change Username
+10. Logout
 ```
 
 ### Librarian Panel Options
@@ -234,7 +240,11 @@ User Management:
 11. Add Student
 12. View All Students
 
-13. Logout
+Account Settings:
+13. Change Password
+14. Change Username
+
+15. Logout
 ```
 
 ### Example Workflows
@@ -272,6 +282,7 @@ User Management:
 The system includes comprehensive input validation:
 
 - ✅ User authentication (username/password verification)
+- ✅ Old password verification for password changes
 - ✅ **Student existence validation** before issuing books
 - ✅ Duplicate ISBN prevention
 - ✅ Duplicate username/user_id prevention
@@ -381,8 +392,9 @@ My Account:
 4. View My Issued Books
 5. View My Account Details
 6. Change Password
+7. Change Username
 
-7. Logout
+8. Logout
 ```
 
 ### Password Change (Coming Soon)

@@ -31,7 +31,31 @@ class Library:
                 return user
         print("❌ Invalid User ID or Password")
         return None
-
+    
+    def change_password(self, user_id, old_password, new_password):
+        for user in self._users:
+            if user.user_id == user_id:
+                if user.password == old_password:
+                    user.password = new_password
+                    self.save_users_data()
+                    print("✅ Password changed successfully!")
+                    return
+                else:
+                    print("❌ Error: Old password is incorrect!")
+                    return
+        print("❌ Error: User not found!")
+        return
+    
+    def change_username(self, user_id, new_user_id):
+        for user in self._users:
+            if user.user_id == user_id:
+                user.user_id = new_user_id
+                self.save_users_data()
+                print("✅ Username changed successfully!")
+                return
+        print("❌ Error: User not found!")
+        return
+    
     def add_admin(self, name, user_id, password, admin_id):
         for user in self._users:
             if user.user_id == user_id:
