@@ -40,7 +40,7 @@ class Library:
         new_admin = Admin(name, user_id, password, admin_id)
         self._users.append(new_admin)
         self.save_users_data()
-        print(f"Admin {name} Added Successfully!")
+        print(f"✅ Admin {name} Added Successfully!")
 
     def add_librarian(self, name, user_id, password, employee_id):
         for user in self._users:
@@ -50,7 +50,7 @@ class Library:
         new_librarian = Librarian(name, user_id, password, employee_id)
         self._users.append(new_librarian)
         self.save_users_data()
-        print(f"Librarian {name} Added Successfully!")
+        print(f"✅ Librarian {name} Added Successfully!")
 
     def add_student(self, name, user_id, password, student_id):
         for user in self._users:
@@ -60,41 +60,49 @@ class Library:
         new_student = Student(name, user_id, password, student_id)
         self._users.append(new_student)
         self.save_users_data()
-        print(f"Student {name} Added Successfully!")
+        print(f"✅ Student {name} Added Successfully!")
 
     def view_all_users(self):
         if not self._users:
             print("📭 No users found in the system.")
             return
-        
+
         print("\n" + "=" * 60)
         print("👥 ALL USERS IN THE SYSTEM")
         print("=" * 60)
-        
+
         admins = [u for u in self._users if u.get_role() == "Admin"]
         librarians = [u for u in self._users if u.get_role() == "Librarian"]
         students = [u for u in self._users if u.get_role() == "Student"]
-        
+
         if admins:
             print("\n👑 ADMINS:")
             print("-" * 60)
             for admin in admins:
-                print(f"  Name: {admin.name} | User ID: {admin.user_id} | Admin ID: {admin.admin_id}")
-        
+                print(
+                    f"  Name: {admin.name} | User ID: {admin.user_id} | Admin ID: {admin.admin_id}"
+                )
+
         if librarians:
             print("\n👨‍💼 LIBRARIANS:")
             print("-" * 60)
             for lib in librarians:
-                print(f"  Name: {lib.name} | User ID: {lib.user_id} | Employee ID: {lib.employee_id}")
-        
+                print(
+                    f"  Name: {lib.name} | User ID: {lib.user_id} | Employee ID: {lib.employee_id}"
+                )
+
         if students:
             print("\n📚 STUDENTS:")
             print("-" * 60)
             for student in students:
-                print(f"  Name: {student.name} | User ID: {student.user_id} | Roll No: {student.rollnumber}")
-        
+                print(
+                    f"  Name: {student.name} | User ID: {student.user_id} | Roll No: {student.rollnumber}"
+                )
+
         print("=" * 60)
-        print(f"Total Users: {len(self._users)} (Admins: {len(admins)}, Librarians: {len(librarians)}, Students: {len(students)})")
+        print(
+            f"Total Users: {len(self._users)} (Admins: {len(admins)}, Librarians: {len(librarians)}, Students: {len(students)})"
+        )
         print("=" * 60)
 
     # Book Management Methods
@@ -129,7 +137,12 @@ class Library:
                         if any(b.isbn == new_isbn and b != book for b in self.books):
                             print("❌ Error: A book with this ISBN already exists!")
                             return
+                        old_isbn = book.isbn
                         book.isbn = new_isbn
+                        # Update all issued books records with the new ISBN
+                        for issued in self._issuedBooks:
+                            if issued["isbn"] == old_isbn:
+                                issued["isbn"] = new_isbn
                     except ValueError:
                         print("❌ Error: ISBN must be a number!")
                         return
@@ -165,6 +178,12 @@ class Library:
     def remove_books(self, isbn):
         for book in self.books:
             if isbn == book.isbn:
+                # Check if book is currently issued
+                for issued in self._issuedBooks:
+                    if issued["isbn"] == isbn:
+                        print("❌ Error: Cannot remove book that is currently issued to students!")
+                        print("Please wait for all copies to be returned first.")
+                        return
                 self._books.remove(book)
                 print("Book Removed Successfully!")
                 return
@@ -220,16 +239,18 @@ class Library:
     def issue_book(self, rollNo, isbn):
         # Check if student exists
         student = None
+        # Convert rollNo to string to ensure type consistency
+        rollNo = str(rollNo)
         for user in self._users:
-            if user.get_role() == "Student" and user.rollnumber == rollNo:
+            if user.get_role() == "Student" and str(user.rollnumber) == rollNo:
                 student = user
                 break
-        
+
         if student is None:
             print(f"❌ Error: Student with Roll Number {rollNo} does not exist!")
             print("Please add the student first before issuing a book.")
             return False
-        
+
         # Check if book exists and is available
         for book in self.books:
             if isbn == book.isbn:
@@ -239,8 +260,8 @@ class Library:
                     # Store only foreign keys (like database foreign keys)
                     issue_entry = {
                         "timeStamp": timeStamp,
-                        "rollNo": rollNo,    # Foreign key to student
-                        "isbn": book.isbn,   # Foreign key to book
+                        "rollNo": rollNo,  # Foreign key to student
+                        "isbn": book.isbn,  # Foreign key to book
                     }
                     self._issuedBooks.append(issue_entry)
                     print(
@@ -263,41 +284,43 @@ class Library:
             # Lookup student and book using foreign keys
             student_name = "Unknown Student"
             for user in self._users:
-                if user.get_role() == "Student" and user.rollnumber == entry["rollNo"]:
+                if user.get_role() == "Student" and str(user.rollnumber) == str(entry["rollNo"]):
                     student_name = user.name
                     break
-            
+
             book_title = "Unknown Book"
             for book in self._books:
                 if book.isbn == entry["isbn"]:
                     book_title = book.title
                     break
-            
+
             print(
                 f"{entry['timeStamp']} - {book_title} (ISBN: {entry['isbn']}) issued to {student_name} (Roll No: {entry['rollNo']})"
             )
 
     def check_issue_books_finder(self, rollnumber):
         found = False
+        # Convert to string to ensure type consistency
+        rollnumber = str(rollnumber)
         for entry in self.issuedBooks:
-            if entry["rollNo"] == rollnumber:
+            if str(entry["rollNo"]) == rollnumber:
                 if not found:
                     print(f"\n--- Search Results for Roll Number: {rollnumber} ---")
                     found = True
-                
+
                 # Lookup student and book using foreign keys
                 student_name = "Unknown Student"
                 for user in self._users:
-                    if user.get_role() == "Student" and user.rollnumber == rollnumber:
+                    if user.get_role() == "Student" and str(user.rollnumber) == rollnumber:
                         student_name = user.name
                         break
-                
+
                 book_title = "Unknown Book"
                 for book in self._books:
                     if book.isbn == entry["isbn"]:
                         book_title = book.title
                         break
-                
+
                 print(
                     f"🕒 {entry['timeStamp']} | Book: {book_title} (ISBN: {entry['isbn']}) | Student: {student_name} (Roll No: {rollnumber})"
                 )
@@ -305,10 +328,12 @@ class Library:
             print(f"⚠️ No records found for Roll Number: {rollnumber}")
 
     def return_book(self, rollNo, isbn):
+        # Convert to string to ensure type consistency
+        rollNo = str(rollNo)
         for book in self.books:
             if book.isbn == isbn:
                 for issueBook in self._issuedBooks:
-                    if issueBook["rollNo"] == rollNo and issueBook["isbn"] == isbn:
+                    if str(issueBook["rollNo"]) == rollNo and issueBook["isbn"] == isbn:
                         self._issuedBooks.remove(issueBook)
                         book.quantity += 1
                         print(
@@ -321,6 +346,29 @@ class Library:
                 return
         print("❌ No Book Found Matched To ISBN Number")
         return
+
+    # Student Specific Methods
+
+    def view_borrowed_books(self, rollnumber):
+        print("\n--- Borrowed Books ---")
+        found = False
+        # Convert to string to ensure type consistency
+        rollnumber = str(rollnumber)
+        for entry in self.issuedBooks:
+            if str(entry["rollNo"]) == rollnumber:
+                found = True
+                # Lookup book title using ISBN
+                book_title = "Unknown Book"
+                for book in self._books:
+                    if book.isbn == entry["isbn"]:
+                        book_title = book.title
+                        break
+                
+                print(
+                    f"📖 Book Title: {book_title} | ISBN: {entry['isbn']} | Issued On: {entry['timeStamp']}"
+                )
+        if not found:
+            print("📭 No borrowed books found for this student.")
 
     # Data Management Methods
 

@@ -17,15 +17,15 @@ def admin_panel(library, admin):
     print("4. Search Books")
     print("=" * 50)
     print("User Management:")
-    print("4. Add Student")
-    print("5. Add Librarian")
-    print("6. View All Users")
-    print("7. Logout")
+    print("5. Add Student")
+    print("6. Add Librarian")
+    print("7. View All Users")
+    print("8. Logout")
     print("=" * 50)
     print("-" * 50)
 
     while True:
-        choice = input("Enter your choice (1-7): ")
+        choice = input("Enter your choice (1-8): ")
 
         if choice == "1":
             title = input("Please Write Title: ")
@@ -68,23 +68,27 @@ def admin_panel(library, admin):
             library.display_books()
 
         elif choice == "4":
+            searchValue = input("Please Enter Title, Author or ISBN to Search: ")
+            library.search_books(searchValue)
+
+        elif choice == "5":
             name = input("Enter Student Name: ")
             username = input("Enter Student Username: ")
             password = input("Enter Student Password: ")
             rollNo = input("Enter Student Roll Number: ")
             library.add_student(name, username, password, rollNo)
 
-        elif choice == "5":
+        elif choice == "6":
             name = input("Enter Librarian Name: ")
             username = input("Enter Librarian Username: ")
             password = input("Enter Librarian Password: ")
             employee_id = input("Enter Librarian Employee ID: ")
             library.add_librarian(name, username, password, employee_id)
 
-        elif choice == "6":
+        elif choice == "7":
             library.view_all_users()
 
-        elif choice == "7":
+        elif choice == "8":
             print("Logging out from Admin Panel.")
             main()
             break
@@ -272,6 +276,68 @@ def librarian_panel(library, librarian_user):
             print("⚠️  Invalid choice, please try again.")
 
 
+def student_panel(library, student_user):
+    print("\n--- Student Panel ---")
+    print(f"🎓 STUDENT PANEL - Welcome {student_user.name}")
+    print("=" * 50)
+    print("1. View Available Books")
+    print("2. Search Books")
+    print("=" * 50)
+    print("3. Borrow Book")
+    print("4. Return Book")
+    print("5. View Borrowed Books")
+    print("=" * 50)
+    print("6. Logout")
+    print("=" * 50)
+
+    while True:
+        userChoice = input("\nPlease Enter Choice (1-6): ")
+        if userChoice == "1":
+            library.display_books()
+
+        elif userChoice == "2":
+            searchValue = input("Please Enter Title, Author or ISBN to Search: ")
+            library.search_books(searchValue)
+
+        elif userChoice == "3":
+            try:
+                isbn = int(
+                    input(
+                        "Please Enter ISBN Number of the Book without Dashes to Borrow: "
+                    )
+                )
+            except ValueError:
+                print("❌ Error: ISBN must be a number!")
+                continue
+
+            library.issue_book(student_user.rollnumber, isbn)
+            library.save_data()
+
+        elif userChoice == "4":
+            try:
+                isbn = int(
+                    input(
+                        "Please Enter ISBN Number of the Book without Dashes to Return: "
+                    )
+                )
+            except ValueError:
+                print("❌ Error: ISBN must be a number!")
+                continue
+            library.return_book(student_user.rollnumber, isbn)
+            library.save_data()
+
+        elif userChoice == "5":
+            library.view_borrowed_books(student_user.rollnumber)
+
+        elif userChoice == "6":
+            print("👋 Goodbye, Logging out from Student Panel.")
+            main()
+            break
+
+        else:
+            print("⚠️  Invalid choice, please try again.")
+
+
 def main():
     library = Library()
     library.load_data()
@@ -306,8 +372,7 @@ def main():
         librarian_panel(library, user)
 
     elif login and user.get_role() == "Student":
-        print("\n📚 Student panel is under construction.")
-        print("Please contact the librarian for assistance.")
+        student_panel(library, user)
 
 
 if __name__ == "__main__":
