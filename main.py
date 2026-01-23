@@ -20,12 +20,14 @@ def admin_panel(library, admin):
     print("4. Add Student")
     print("5. Add Librarian")
     print("6. View All Users")
-    print("7. Logout")
+    print("7. Change Password")
+    print("8. Change Username")
+    print("9. Logout")
     print("=" * 50)
     print("-" * 50)
 
     while True:
-        choice = input("Enter your choice (1-7): ")
+        choice = input("Enter your choice (1-9): ")
 
         if choice == "1":
             title = input("Please Write Title: ")
@@ -85,6 +87,17 @@ def admin_panel(library, admin):
             library.view_all_users()
 
         elif choice == "7":
+            user_id = input("Enter User ID: ")
+            old_password = input("Enter Old Password: ")
+            new_password = input("Enter New Password: ")
+            library.change_password(user_id, old_password, new_password)
+
+        elif choice == "8":
+            user_id = input("Enter User ID: ")
+            new_name = input("Enter New Username: ")
+            library.change_username(user_id, new_name)
+
+        elif choice == "9":
             print("Logging out from Admin Panel.")
             main()
             break
@@ -115,11 +128,15 @@ def librarian_panel(library, librarian_user):
     print("11. Add Student")
     print("12. View All Students")
     print("-" * 20)
-    print("13. Logout")
+    print("Account Settings:")
+    print("13. Change Password")
+    print("14. Change Username")
+    print("-" * 20)
+    print("15. Logout")
     print("=" * 50)
 
     while True:
-        userChoice = input("\nPlease Enter Choice (1-13): ")
+        userChoice = input("\nPlease Enter Choice (1-15): ")
 
         if userChoice == "1":
             title = input("Please Write Title: ")
@@ -264,6 +281,17 @@ def librarian_panel(library, librarian_user):
             library.view_all_users()
 
         elif userChoice == "13":
+            user_id = input("Enter User ID: ")
+            old_password = input("Enter Old Password: ")
+            new_password = input("Enter New Password: ")
+            library.change_password(user_id, old_password, new_password)
+
+        elif userChoice == "14":
+            user_id = input("Enter User ID: ")
+            new_name = input("Enter New Username: ")
+            library.change_username(user_id, new_name)
+
+        elif userChoice == "15":
             print("👋 Goodbye, Logging out from Librarian Panel.")
             main()
             break
