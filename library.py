@@ -46,10 +46,10 @@ class Library:
         print("❌ Error: User not found!")
         return
     
-    def change_username(self, user_id, new_name):
+    def change_username(self, user_id, new_user_id):
         for user in self._users:
             if user.user_id == user_id:
-                user.name = new_name
+                user.user_id = new_user_id
                 self.save_users_data()
                 print("✅ Username changed successfully!")
                 return
