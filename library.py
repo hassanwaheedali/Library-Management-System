@@ -24,17 +24,17 @@ class Library:
 
     # User Management Methods
 
-    def login(self, user_id, password):
+    def login(self, username, password):
         for user in self._users:
-            if user.user_id == user_id and user.password == password:
+            if user.username == username and user.password == password:
                 print(f"✅ Login Successful! Welcome, {user.name} ({user.get_role()})")
                 return user
-        print("❌ Invalid User ID or Password")
+        print("❌ Invalid Username or Password")
         return None
-    
-    def change_password(self, user_id, old_password, new_password):
+
+    def change_password(self, username, old_password, new_password):
         for user in self._users:
-            if user.user_id == user_id:
+            if user.username == username:
                 if user.password == old_password:
                     user.password = new_password
                     self.save_users_data()
@@ -45,43 +45,52 @@ class Library:
                     return
         print("❌ Error: User not found!")
         return
-    
-    def change_username(self, user_id, new_user_id):
+
+    def change_username(self, old_username, new_username):
+        # Check if new username already exists
         for user in self._users:
-            if user.user_id == user_id:
-                user.user_id = new_user_id
+            if user.username == new_username:
+                print(
+                    "❌ Error: Username already exists! Please choose a different username."
+                )
+                return False
+
+        # Find and update the user
+        for user in self._users:
+            if user.username == old_username:
+                user.username = new_username
                 self.save_users_data()
                 print("✅ Username changed successfully!")
-                return
+                return True
         print("❌ Error: User not found!")
-        return
-    
-    def add_admin(self, name, user_id, password, admin_id):
+        return False
+
+    def add_admin(self, name, username, password, admin_id):
         for user in self._users:
-            if user.user_id == user_id:
-                print("❌ Error: Admin with this User ID already exists!")
+            if user.username == username:
+                print("❌ Error: Admin with this username already exists!")
                 return
-        new_admin = Admin(name, user_id, password, admin_id)
+        new_admin = Admin(name, username, password, admin_id)
         self._users.append(new_admin)
         self.save_users_data()
         print(f"✅ Admin {name} Added Successfully!")
 
-    def add_librarian(self, name, user_id, password, employee_id):
+    def add_librarian(self, name, username, password, employee_id):
         for user in self._users:
-            if user.user_id == user_id:
-                print("❌ Error: Librarian with this User ID already exists!")
+            if user.username == username:
+                print("❌ Error: Librarian with this username already exists!")
                 return
-        new_librarian = Librarian(name, user_id, password, employee_id)
+        new_librarian = Librarian(name, username, password, employee_id)
         self._users.append(new_librarian)
         self.save_users_data()
         print(f"✅ Librarian {name} Added Successfully!")
 
-    def add_student(self, name, user_id, password, student_id):
+    def add_student(self, name, username, password, student_id):
         for user in self._users:
-            if user.user_id == user_id:
-                print("❌ Error: Student with this User ID already exists!")
+            if user.username == username:
+                print("❌ Error: Student with this username already exists!")
                 return
-        new_student = Student(name, user_id, password, student_id)
+        new_student = Student(name, username, password, student_id)
         self._users.append(new_student)
         self.save_users_data()
         print(f"✅ Student {name} Added Successfully!")
@@ -104,7 +113,7 @@ class Library:
             print("-" * 60)
             for admin in admins:
                 print(
-                    f"  Name: {admin.name} | User ID: {admin.user_id} | Admin ID: {admin.admin_id}"
+                    f"  Name: {admin.name} | Username: {admin.username} | Admin ID: {admin.admin_id}"
                 )
 
         if librarians:
@@ -112,7 +121,7 @@ class Library:
             print("-" * 60)
             for lib in librarians:
                 print(
-                    f"  Name: {lib.name} | User ID: {lib.user_id} | Employee ID: {lib.employee_id}"
+                    f"  Name: {lib.name} | Username: {lib.username} | Employee ID: {lib.employee_id}"
                 )
 
         if students:
@@ -120,7 +129,7 @@ class Library:
             print("-" * 60)
             for student in students:
                 print(
-                    f"  Name: {student.name} | User ID: {student.user_id} | Roll No: {student.rollnumber}"
+                    f"  Name: {student.name} | Username: {student.username} | Roll No: {student.rollnumber}"
                 )
 
         print("=" * 60)
@@ -205,7 +214,9 @@ class Library:
                 # Check if book is currently issued
                 for issued in self._issuedBooks:
                     if issued["isbn"] == isbn:
-                        print("❌ Error: Cannot remove book that is currently issued to students!")
+                        print(
+                            "❌ Error: Cannot remove book that is currently issued to students!"
+                        )
                         print("Please wait for all copies to be returned first.")
                         return
                 self._books.remove(book)
@@ -308,7 +319,9 @@ class Library:
             # Lookup student and book using foreign keys
             student_name = "Unknown Student"
             for user in self._users:
-                if user.get_role() == "Student" and str(user.rollnumber) == str(entry["rollNo"]):
+                if user.get_role() == "Student" and str(user.rollnumber) == str(
+                    entry["rollNo"]
+                ):
                     student_name = user.name
                     break
 
@@ -335,7 +348,10 @@ class Library:
                 # Lookup student and book using foreign keys
                 student_name = "Unknown Student"
                 for user in self._users:
-                    if user.get_role() == "Student" and str(user.rollnumber) == rollnumber:
+                    if (
+                        user.get_role() == "Student"
+                        and str(user.rollnumber) == rollnumber
+                    ):
                         student_name = user.name
                         break
 
@@ -387,7 +403,7 @@ class Library:
                     if book.isbn == entry["isbn"]:
                         book_title = book.title
                         break
-                
+
                 print(
                     f"📖 Book Title: {book_title} | ISBN: {entry['isbn']} | Issued On: {entry['timeStamp']}"
                 )
@@ -453,21 +469,27 @@ class Library:
                     if user_data["role"] == "Admin":
                         user = Admin(
                             user_data["name"],
-                            user_data["user_id"],
+                            user_data.get(
+                                "username", user_data.get("user_id")
+                            ),  # Support old files
                             user_data["password"],
                             user_data["admin_id"],
                         )
                     elif user_data["role"] == "Librarian":
                         user = Librarian(
                             user_data["name"],
-                            user_data["user_id"],
+                            user_data.get(
+                                "username", user_data.get("user_id")
+                            ),  # Support old files
                             user_data["password"],
                             user_data["employee_id"],
                         )
                     elif user_data["role"] == "Student":
                         user = Student(
                             user_data["name"],
-                            user_data["user_id"],
+                            user_data.get(
+                                "username", user_data.get("user_id")
+                            ),  # Support old files
                             user_data["password"],
                             user_data["rollnumber"],
                         )

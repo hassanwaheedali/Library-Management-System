@@ -28,13 +28,15 @@ A comprehensive Python-based Library Management System with role-based access co
 - **Search Books**: Find books by title, author, or ISBN
 - **Find Books by Shelf**: Locate all books on a specific shelf
 
-### Book Circulation Management (Librarian)
+### Book Circulation Management (Librarian & Student)
 
 - **Issue Books**: Issue books to registered students only (validates student existence)
-- **On-the-Fly Registration**: Create new student accounts during book issuing if needed
+- **On-the-Fly Registration**: Create new student accounts during book issuing if needed (Librarian only)
+- **Borrow Books**: Students can directly borrow available books
 - **Return Books**: Process book returns and update inventory
-- **View Issued Books History**: Complete log of all book transactions with foreign key lookups
-- **Search Issued Books**: Find all books issued to a specific student by roll number
+- **View Issued Books History**: Complete log of all book transactions with foreign key lookups (Librarian)
+- **View Borrowed Books**: Students can see all their currently borrowed books
+- **Search Issued Books**: Find all books issued to a specific student by roll number (Librarian)
 
 ### Data Persistence
 
@@ -86,7 +88,7 @@ Abstract base class with three concrete implementations:
 **Student Class**
 
 - `rollnumber`: Unique student roll number
-- Limited access (under construction)
+- Access to book browsing and personal account management
 
 #### **Book Class** (`book.py`)
 
@@ -119,7 +121,7 @@ Manages the entire library system with three main collections:
 - `add_student()`: Register new student accounts
 - `view_all_users()`: Display all users organized by role
 - `change_password()`: Update user password with old password verification
-- `change_username()`: Update user's display name
+- `change_username()`: Update user's username with duplicate validation
 
 **Book Management Methods:**
 
@@ -136,6 +138,7 @@ Manages the entire library system with three main collections:
 - `return_book()`: Process returns and update quantities
 - `check_issue_books()`: View complete issue history (uses foreign key lookups)
 - `check_issue_books_finder()`: Search issues by roll number (uses foreign key lookups)
+- `view_borrowed_books()`: Display all books borrowed by a specific student
 
 **Data Persistence Methods:**
 
@@ -247,6 +250,25 @@ Account Settings:
 15. Logout
 ```
 
+### Student Panel Options
+
+```
+Book Browsing:
+1. View Available Books
+2. Search Books
+
+Book Transactions:
+3. Borrow Book
+4. Return Book
+5. View Borrowed Books
+
+Account Settings:
+6. Change Password
+7. Change Username
+
+8. Logout
+```
+
 ### Example Workflows
 
 #### First Time Setup (Admin)
@@ -268,14 +290,60 @@ Account Settings:
 6. If student doesn't exist, option to create account on-the-fly
 7. System decrements quantity and logs transaction
 
-#### Viewing Issued Books
+#### Borrowing a Book (Student)
 
-1. Select option `8` (Check Issued Books History)
-2. System displays all transactions with:
+1. Login as student
+2. Select option `3` (Borrow Book)
+3. Enter book ISBN
+4. **System validates:**
+   - Book exists and is available
+   - Student account is active
+5. System issues book and decrements quantity
+6. Transaction logged with timestamp
+
+#### Returning a Book (Student)
+
+1. Login as student
+2. Select option `4` (Return Book)
+3. Enter book ISBN of borrowed book
+4. System validates the issue record
+5. Book quantity incremented
+6. Issue record removed from system
+
+#### Viewing Borrowed Books (Student)
+
+1. Login as student
+2. Select option `5` (View Borrowed Books)
+3. System displays all currently borrowed books with:
+   - Book title
+   - ISBN
+   - Issue date and time
+
+#### Viewing Issued Books (Librarian)
+
+1. Login as librarian
+2. Select option `8` (Check Issued Books History)
+3. System displays all transactions with:
    - Timestamp
    - Student name (looked up via foreign key)
    - Book title (looked up via foreign key)
    - Roll number and ISBN
+
+#### Changing Password (All Users)
+
+1. Select "Change Password" from respective panel
+2. Enter old password
+3. Enter new password
+4. System validates old password and updates
+5. Changes saved to users_data.json
+
+#### Changing Username (All Users)
+
+1. Select "Change Username" from respective panel
+2. Enter new desired username
+3. System checks for duplicate usernames
+4. If available, username updated
+5. Changes saved to users_data.json
 
 ## 🔒 Data Validation
 
@@ -283,6 +351,7 @@ The system includes comprehensive input validation:
 
 - ✅ User authentication (username/password verification)
 - ✅ Old password verification for password changes
+- ✅ Duplicate username prevention for username changes
 - ✅ **Student existence validation** before issuing books
 - ✅ Duplicate ISBN prevention
 - ✅ Duplicate username/user_id prevention
@@ -290,7 +359,9 @@ The system includes comprehensive input validation:
 - ✅ Book availability verification before issuing
 - ✅ ISBN and quantity type validation
 - ✅ Roll number verification for returns
+- ✅ Issue record validation for returns
 - ✅ Role-based access control
+- ✅ Type consistency for roll numbers (string) and ISBNs (integer)
 
 ## 💾 Data Storage
 
@@ -325,28 +396,28 @@ Stores books and issued books with **foreign key relationships**:
 
 ### `users_data.json`
 
-Stores all user accounts:
+Stores all user accounts with username-based identification:
 
 ```json
 {
   "Users": [
     {
       "name": "Default Admin",
-      "user_id": "admin",
+      "username": "admin",
       "password": "admin123",
       "admin_id": 1,
       "role": "Admin"
     },
     {
       "name": "John Smith",
-      "user_id": "lib001",
+      "username": "lib001",
       "password": "pass123",
       "employee_id": "EMP001",
       "role": "Librarian"
     },
     {
       "name": "Alice Johnson",
-      "user_id": "alice_j",
+      "username": "alice_j",
       "password": "student123",
       "rollnumber": "S12345",
       "role": "Student"
@@ -355,10 +426,14 @@ Stores all user accounts:
 }
 ```
 
+**Note**: The system supports backward compatibility with old JSON files that use `user_id` instead of `username`.
+
 ## 🎯 Key Features Highlights
 
-- **Role-Based Access Control**: Separate interfaces for Admin, Librarian, and Student
+- **Complete Student Panel**: Fully functional interface for students to browse, borrow, and manage their book transactions
+- **Role-Based Access Control**: Separate interfaces for Admin, Librarian, and Student with appropriate permissions
 - **Authentication System**: Secure login with username/password
+- **Password & Username Management**: All users can change their passwords and usernames with validation
 - **Object-Oriented Design**: Clean separation of concerns with Person hierarchy, Book, and Library classes
 - **Foreign Key Relationships**: Efficient data storage mimicking database design principles
 - **Dual Data Persistence**: Separate JSON files for library data and user data
@@ -367,7 +442,10 @@ Stores all user accounts:
 - **Transaction Tracking**: Complete audit trail of book issues/returns with timestamps
 - **Dynamic Data Lookup**: Student names and book titles retrieved via foreign keys to ensure data consistency
 - **Flexible Search**: Search books by multiple criteria simultaneously
-- **On-Demand Registration**: Create student accounts during book issuing workflow
+- **On-Demand Registration**: Create student accounts during book issuing workflow (Librarian feature)
+- **No Infinite Recursion**: Proper logout and re-login flow without stack overflow issues
+- **Type Consistency**: Roll numbers as strings, ISBNs as integers for reliable comparisons
+- **Backward Compatibility**: Supports old JSON files with `user_id` field
 
 ## 🛠️ Technical Implementation
 
@@ -380,47 +458,35 @@ Stores all user accounts:
 - **Data Structure**: Lists and dictionaries for efficient data management
 - **Abstraction**: Abstract base class (ABC) for Person hierarchy
 
-### Student Panel Options (Under Development)
+### Student Panel Options
 
 ```
 Book Browsing:
-1. Display All Available Books
+1. View Available Books
 2. Search Books
-3. Find Books by Shelf Number
 
-My Account:
-4. View My Issued Books
-5. View My Account Details
+Book Transactions:
+3. Borrow Book
+4. Return Book
+5. View Borrowed Books
+
+Account Settings:
 6. Change Password
 7. Change Username
 
 8. Logout
 ```
 
-### Password Change (Coming Soon)
-
-All users will be able to change their passwords:
-
-1. Select "Change Password" from their respective panel
-2. Enter current password for verification
-3. Enter new password
-4. Confirm new password
-5. System validates and updates password in `users_data.json`
+Students have full access to browse books, borrow/return books, view their borrowing history, and manage their account settings.
 
 ## 🔮 Future Enhancements
-
-### Upcoming Features (In Development)
-
-- **Student Panel Implementation**: Complete interface for students to browse and track their issued books
-- **Password Change Functionality**: Allow all users to update their passwords securely
-- **Due Date System**: Assign and track due dates for issued books
-- **Overdue Notifications**: Alert system for books past due date
 
 ### Potential Improvements for Future Versions
 
 - Password hashing for enhanced security (bcrypt, SHA-256)
 - Fine calculation for overdue books with configurable rates
 - Book reservation system (reserve books that are currently issued)
+- Due date system with automatic tracking
 - Email/SMS notifications for overdue books and reservations
 - Multiple library branches support with inter-branch transfers
 - Database integration (SQLite/PostgreSQL) for better scalability
@@ -437,82 +503,10 @@ All users will be able to change their passwords:
 - Dark mode UI option
 - Backup and restore functionality
 - Integration with online book databases (Google Books API, Open Library)
-
-### Student Panel - Detailed Feature List (Upcoming)
-
-**Book Discovery:**
-
-- View all available books with real-time availability status
-- Advanced search with filters (author, genre, year, availability)
-- Browse books by categories/genres
-- View popular and newly added books
-- See book recommendations based on reading history
-
-**Personal Library Management:**
-
-- View all currently issued books with:
-  - Issue date and time
-  - Due date countdown
-  - Book details (title, author, ISBN)
-  - Option to request renewal
-- View complete borrowing history
-- Track overdue books with fine calculation
-- Reserve books that are currently unavailable
-
-**Account Management:**
-
-- View personal profile (name, roll number, contact details)
-- Change password securely
-- Update contact information
-- View fine/penalty status
-- Download transaction receipts
-
-**Notifications:**
-
-- Receive alerts for:
-  - Books due soon (3 days before)
-  - Overdue books
-  - Reserved books now available
-  - New books matching interests
-  - Library announcements
-
-### Password Change Feature - Implementation Details
-
-**Security Features:**
-
-- Current password verification before allowing change
-- New password confirmation (enter twice to match)
-- Password strength indicator
-- Minimum password length requirement (8 characters)
-- Optional: Password complexity rules (uppercase, lowercase, numbers, special characters)
-
-**User Workflow:**
-
-1. Navigate to "Change Password" option in respective panel
-2. System prompts for:
-   - Current password (masked input)
-   - New password (masked input)
-   - Confirm new password (masked input)
-3. Validation checks:
-   - Current password matches stored password
-   - New password meets strength requirements
-   - New password and confirmation match
-   - New password is different from current password
-4. Upon success:
-   - Password updated in `users_data.json`
-   - Success message displayed
-   - Optional: Force re-login for security
-5. Upon failure:
-   - Clear error message explaining the issue
-   - Allow retry with preserved form state
-
-**Implementation Considerations:**
-
-- Add password change history (timestamp of last change)
-- Implement password expiry policy (optional: force change every 90 days)
-- Prevent reuse of last N passwords
-- Add "Forgot Password" feature (security questions or admin reset)
-- Log password change events for audit trail
+- Prevent duplicate book borrowing (student can't borrow same book twice)
+- Book renewal system (extend borrowing period)
+- Reading history and statistics for students
+- Library announcements and notifications system
 
 ## 🔐 Security Notes
 

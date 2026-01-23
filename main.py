@@ -17,15 +17,20 @@ def admin_panel(library, admin):
     print("4. Search Books")
     print("=" * 50)
     print("User Management:")
-    print("4. Add Student")
-    print("5. Add Librarian")
-    print("6. View All Users")
-    print("7. Logout")
+    print("5. Add Student")
+    print("6. Add Librarian")
+    print("7. View All Users")
+    print("=" * 50)
+    print("Account Settings:")
+    print("8. Change Password")
+    print("9. Change Username")
+    print("=" * 50)
+    print("10. Logout")
     print("=" * 50)
     print("-" * 50)
 
     while True:
-        choice = input("Enter your choice (1-7): ")
+        choice = input("Enter your choice (1-10): ")
 
         if choice == "1":
             title = input("Please Write Title: ")
@@ -88,10 +93,20 @@ def admin_panel(library, admin):
         elif choice == "7":
             library.view_all_users()
 
-        elif choice == "7":
+        elif choice == "8":
+            username = input("Enter Username: ")
+            old_password = input("Enter Old Password: ")
+            new_password = input("Enter New Password: ")
+            library.change_password(username, old_password, new_password)
+
+        elif choice == "9":
+            old_username = input("Enter Current Username: ")
+            new_username = input("Enter New Username: ")
+            library.change_username(old_username, new_username)
+
+        elif choice == "10":
             print("Logging out from Admin Panel.")
-            main()
-            break
+            return
 
         else:
             print("Invalid choice. Please try again.")
@@ -272,20 +287,19 @@ def librarian_panel(library, librarian_user):
             library.view_all_users()
 
         elif userChoice == "13":
-            user_id = input("Enter User ID: ")
+            username = input("Enter Username: ")
             old_password = input("Enter Old Password: ")
             new_password = input("Enter New Password: ")
-            library.change_password(user_id, old_password, new_password)
+            library.change_password(username, old_password, new_password)
 
         elif userChoice == "14":
-            user_id = input("Enter User ID: ")
-            new_name = input("Enter New Username: ")
-            library.change_username(user_id, new_name)
+            old_username = input("Enter Current Username: ")
+            new_username = input("Enter New Username: ")
+            library.change_username(old_username, new_username)
 
         elif userChoice == "15":
             print("👋 Goodbye, Logging out from Librarian Panel.")
-            main()
-            break
+            return
 
         else:
             print("⚠️  Invalid choice, please try again.")
@@ -302,11 +316,15 @@ def student_panel(library, student_user):
     print("4. Return Book")
     print("5. View Borrowed Books")
     print("=" * 50)
-    print("6. Logout")
+    print("Account Settings: ")
+    print("6. Change Password")
+    print("7. Change Username")
+    print("=" * 50)
+    print("8. Logout")
     print("=" * 50)
 
     while True:
-        userChoice = input("\nPlease Enter Choice (1-6): ")
+        userChoice = input("\nPlease Enter Choice (1-8): ")
         if userChoice == "1":
             library.display_books()
 
@@ -345,9 +363,17 @@ def student_panel(library, student_user):
             library.view_borrowed_books(student_user.rollnumber)
 
         elif userChoice == "6":
+            old_password = input("Enter Old Password: ")
+            new_password = input("Enter New Password: ")
+            library.change_password(student_user.username, old_password, new_password)
+
+        elif userChoice == "7":
+            new_username = input("Enter New Username: ")
+            library.change_username(student_user.username, new_username)
+
+        elif userChoice == "8":
             print("👋 Goodbye, Logging out from Student Panel.")
-            main()
-            break
+            return
 
         else:
             print("⚠️  Invalid choice, please try again.")
@@ -357,37 +383,44 @@ def main():
     library = Library()
     library.load_data()
     library.load_users_data()
+
     print("=" * 50)
     print("--- Welcome to the Library Management System! ---")
     print("=" * 50)
 
-    print("=" * 50)
-    print("🔐 LOGIN")
-    print("=" * 50)
+    while True:
+        print("\n" + "=" * 50)
+        print("🔐 LOGIN")
+        print("=" * 50)
 
-    username = input("Enter your username: ")
-    password = input("Enter your password: ")
+        username = input("Enter your username: ")
+        password = input("Enter your password: ")
 
-    user = library.login(username, password)
-    login = False
-    if user is None:
-        continue_login = input("Would you like to try again? (yes/no): ").lower()
-        if continue_login == "yes" or continue_login == "y":
-            main()  # Restart the login process
+        user = library.login(username, password)
+
+        if user is None:
+            continue_login = input("Would you like to try again? (yes/no): ").lower()
+            if continue_login == "yes" or continue_login == "y":
+                continue
+            else:
+                print("👋 Goodbye!")
+                break
         else:
-            print("👋 Goodbye!")
-            return
-    else:
-        login = True
+            # Execute appropriate panel
+            if user.get_role() == "Admin":
+                admin_panel(library, user)
+            elif user.get_role() == "Librarian":
+                librarian_panel(library, user)
+            elif user.get_role() == "Student":
+                student_panel(library, user)
 
-    if login and user.get_role() == "Admin":
-        admin_panel(library, user)
-
-    elif login and user.get_role() == "Librarian":
-        librarian_panel(library, user)
-
-    elif login and user.get_role() == "Student":
-        student_panel(library, user)
+            # After logout, ask if user wants to login again
+            continue_login = input(
+                "\nWould you like to login again? (yes/no): "
+            ).lower()
+            if continue_login != "yes" and continue_login != "y":
+                print("👋 Goodbye!")
+                break
 
 
 if __name__ == "__main__":

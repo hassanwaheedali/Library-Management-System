@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class Person(ABC):
-    def __init__(self, name: str, user_id: int, password: str):
+    def __init__(self, name: str, username: str, password: str):
         self.name = name
-        self.user_id = user_id
+        self.username = username
         self.password = password
 
     def check_password(self, password: str) -> bool:
@@ -15,12 +15,12 @@ class Person(ABC):
         pass
 
     def __str__(self) -> str:
-        return f"Name: {self.name}, ID: {self.user_id}, Role: {self.get_role()}"
+        return f"Name: {self.name}, Username: {self.username}, Role: {self.get_role()}"
 
 
 class Admin(Person):
-    def __init__(self, name, user_id, password, admin_id: int):
-        super().__init__(name, user_id, password)
+    def __init__(self, name, username, password, admin_id: int):
+        super().__init__(name, username, password)
         self.admin_id = admin_id
 
     def get_role(self) -> str:
@@ -29,7 +29,7 @@ class Admin(Person):
     def to_dict(self):
         return {
             "name": self.name,
-            "user_id": self.user_id,
+            "username": self.username,
             "password": self.password,
             "admin_id": self.admin_id,
             "role": self.get_role(),
@@ -40,8 +40,8 @@ class Admin(Person):
 
 
 class Librarian(Person):
-    def __init__(self, name, user_id, password, employee_id: int):
-        super().__init__(name, user_id, password)
+    def __init__(self, name, username, password, employee_id: int):
+        super().__init__(name, username, password)
         self.employee_id = employee_id
 
     def get_role(self) -> str:
@@ -50,7 +50,7 @@ class Librarian(Person):
     def to_dict(self):
         return {
             "name": self.name,
-            "user_id": self.user_id,
+            "username": self.username,
             "password": self.password,
             "employee_id": self.employee_id,
             "role": self.get_role(),
@@ -61,8 +61,8 @@ class Librarian(Person):
 
 
 class Student(Person):
-    def __init__(self, name, user_id, password, rollnumber: int):
-        super().__init__(name, user_id, password)
+    def __init__(self, name, username, password, rollnumber: int):
+        super().__init__(name, username, password)
         self.rollnumber = rollnumber
 
     def get_role(self) -> str:
@@ -71,7 +71,7 @@ class Student(Person):
     def to_dict(self):
         return {
             "name": self.name,
-            "user_id": self.user_id,
+            "username": self.username,
             "password": self.password,
             "rollnumber": self.rollnumber,
             "role": self.get_role(),
