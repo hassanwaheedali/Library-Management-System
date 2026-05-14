@@ -1,14 +1,30 @@
 from abc import ABC, abstractmethod
 
+import bcrypt  # ty:ignore[unresolved-import]
+
 
 class Person(ABC):
-    def __init__(self, name: str, username: str, password: str):
+    def __init__(
+        self, name: str, username: str, password: str, password_is_hashed: bool = False
+    ):
         self.name = name
         self.username = username
-        self.password = password
+        if password_is_hashed:
+            self.password = password
+        else:
+            self.password = self.hash_password(password)
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        # Placeholder for password hashing logic
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    @staticmethod
+    def check_hashed_password(hashed_password: str, password: str) -> bool:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
 
     def check_password(self, password: str) -> bool:
-        return self.password == password
+        return self.check_hashed_password(self.password, password)
 
     @abstractmethod
     def get_role(self) -> str:
@@ -19,8 +35,12 @@ class Person(ABC):
 
 
 class Admin(Person):
-    def __init__(self, name, username, password, admin_id: int):
-        super().__init__(name, username, password)
+    def __init__(
+        self, name, username, password, admin_id: int, password_is_hashed: bool = False
+    ):
+        super().__init__(
+            name, username, password, password_is_hashed=password_is_hashed
+        )
         self.admin_id = admin_id
 
     def get_role(self) -> str:
@@ -40,8 +60,17 @@ class Admin(Person):
 
 
 class Librarian(Person):
-    def __init__(self, name, username, password, employee_id: int):
-        super().__init__(name, username, password)
+    def __init__(
+        self,
+        name,
+        username,
+        password,
+        employee_id: int,
+        password_is_hashed: bool = False,
+    ):
+        super().__init__(
+            name, username, password, password_is_hashed=password_is_hashed
+        )
         self.employee_id = employee_id
 
     def get_role(self) -> str:
@@ -61,8 +90,17 @@ class Librarian(Person):
 
 
 class Student(Person):
-    def __init__(self, name, username, password, rollnumber: int):
-        super().__init__(name, username, password)
+    def __init__(
+        self,
+        name,
+        username,
+        password,
+        rollnumber: int,
+        password_is_hashed: bool = False,
+    ):
+        super().__init__(
+            name, username, password, password_is_hashed=password_is_hashed
+        )
         self.rollnumber = rollnumber
 
     def get_role(self) -> str:

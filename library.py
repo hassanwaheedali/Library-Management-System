@@ -27,7 +27,7 @@ class Library:
 
     def login(self, username, password):
         for user in self._users:
-            if user.username == username and user.password == password:
+            if user.username == username and user.check_password(password):
                 print(f"✅ Login Successful! Welcome, {user.name} ({user.get_role()})")
                 return user
         print("❌ Invalid Username or Password")
@@ -36,8 +36,8 @@ class Library:
     def change_password(self, username, old_password, new_password):
         for user in self._users:
             if user.username == username:
-                if user.password == old_password:
-                    user.password = new_password
+                if user.check_password(old_password):
+                    user.password = user.hash_password(new_password)
                     self.save_users_data()
                     print("✅ Password changed successfully!")
                     return
@@ -264,7 +264,7 @@ class Library:
         # Convert shelfNumber to int if it's a string
         try:
             shelf_num = int(shelfNumber)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             print("❌ Error: Shelf Number must be a valid number!")
             return
 
@@ -481,6 +481,7 @@ class Library:
                             ),  # Support old files
                             user_data["password"],
                             user_data["admin_id"],
+                            password_is_hashed=True,
                         )
                         self._users.append(user)
                     elif user_data["role"] == "Librarian":
@@ -491,6 +492,7 @@ class Library:
                             ),  # Support old files
                             user_data["password"],
                             user_data["employee_id"],
+                            password_is_hashed=True,
                         )
                         self._users.append(user)
                     elif user_data["role"] == "Student":
@@ -501,6 +503,7 @@ class Library:
                             ),  # Support old files
                             user_data["password"],
                             user_data["rollnumber"],
+                            password_is_hashed=True,
                         )
                         self._users.append(user)
                 print(f"📂 Users data loaded successfully from {filename}.")

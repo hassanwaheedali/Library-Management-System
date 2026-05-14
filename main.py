@@ -79,14 +79,24 @@ def admin_panel(library, admin):
         elif choice == "5":
             name = input("Enter Student Name: ")
             username = input("Enter Student Username: ")
-            password = input("Enter Student Password: ")
+            while True:
+                password = input("Enter Student Password: ")
+                confirm_password = input("Confirm Student Password: ")
+                if password == confirm_password:
+                    break
+                print("❌ Error: Passwords do not match! Please type them again.")
             rollNo = input("Enter Student Roll Number: ")
             library.add_student(name, username, password, rollNo)
 
         elif choice == "6":
             name = input("Enter Librarian Name: ")
             username = input("Enter Librarian Username: ")
-            password = input("Enter Librarian Password: ")
+            while True:
+                password = input("Enter Librarian Password: ")
+                confirm_password = input("Confirm Librarian Password: ")
+                if password == confirm_password:
+                    break
+                print("❌ Error: Passwords do not match! Please type them again.")
             employee_id = input("Enter Librarian Employee ID: ")
             library.add_librarian(name, username, password, employee_id)
 
@@ -278,6 +288,10 @@ def librarian_panel(library, librarian_user):
             name = input("Enter Student Name: ")
             username = input("Enter Student Username: ")
             password = input("Enter Student Password: ")
+            confirm_password = input("Confirm Student Password: ")
+            if password != confirm_password:
+                print("❌ Error: Passwords do not match!")
+                continue
             rollNo = input("Enter Student Roll Number: ")
             library.add_student(name, username, password, rollNo)
             library.save_users_data()
