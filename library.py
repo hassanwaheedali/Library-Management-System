@@ -1,5 +1,6 @@
-from datetime import datetime
 import json
+from datetime import datetime
+
 from book import Book
 from person import Admin, Librarian, Student
 
@@ -150,6 +151,10 @@ class Library:
         if any(book.isbn == isbn for book in self.books):
             print("❌ Error: A book with this ISBN already exists!")
             return
+        if any(book.title == title for book in self.books):
+            print("Book with this title already exists.")
+            return
+
         new_books = Book(title, author, isbn, quantity, shelfNumber)
         self._books.append(new_books)
         print("Book Added Successfully!")
@@ -269,7 +274,7 @@ class Library:
                 print(book)
                 found = True
         if not found:
-            print("❌ No Books Found in Shelf Number")
+            print(f"❌ No Books Found in Shelf Number {shelf_num}")
 
     def issue_book(self, rollNo, isbn):
         # Check if student exists
@@ -299,6 +304,7 @@ class Library:
                         "isbn": book.isbn,  # Foreign key to book
                     }
                     self._issuedBooks.append(issue_entry)
+                    self.save_data()
                     print(
                         f"📖 Book Issued to {student.name} ({rollNo}) Successfully! Remaining: {book.quantity}"
                     )
@@ -376,6 +382,7 @@ class Library:
                     if str(issueBook["rollNo"]) == rollNo and issueBook["isbn"] == isbn:
                         self._issuedBooks.remove(issueBook)
                         book.quantity += 1
+                        self.save_data()
                         print(
                             f"✅ Book with ISBN {isbn} returned successfully by {rollNo}."
                         )
@@ -405,7 +412,7 @@ class Library:
                         break
 
                 print(
-                    f"📖 Book Title: {book_title} | ISBN: {entry['isbn']} | Issued On: {entry['timeStamp']}"
+                    f"📖 Book Title: {book_title} | ISBN: {entry['isbn']} | Issued to: RollNO ({entry['rollNo']}) | Issued On: {entry['timeStamp']}"
                 )
         if not found:
             print("📭 No borrowed books found for this student.")
@@ -475,6 +482,7 @@ class Library:
                             user_data["password"],
                             user_data["admin_id"],
                         )
+                        self._users.append(user)
                     elif user_data["role"] == "Librarian":
                         user = Librarian(
                             user_data["name"],
@@ -484,6 +492,7 @@ class Library:
                             user_data["password"],
                             user_data["employee_id"],
                         )
+                        self._users.append(user)
                     elif user_data["role"] == "Student":
                         user = Student(
                             user_data["name"],
@@ -493,7 +502,7 @@ class Library:
                             user_data["password"],
                             user_data["rollnumber"],
                         )
-                    self._users.append(user)
+                        self._users.append(user)
                 print(f"📂 Users data loaded successfully from {filename}.")
         except FileNotFoundError:
             print("📝 No previous users data found. Starting with no users.")

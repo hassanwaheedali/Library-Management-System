@@ -344,7 +344,6 @@ def student_panel(library, student_user):
                 continue
 
             library.issue_book(student_user.rollnumber, isbn)
-            library.save_data()
 
         elif userChoice == "4":
             try:
@@ -357,7 +356,6 @@ def student_panel(library, student_user):
                 print("❌ Error: ISBN must be a number!")
                 continue
             library.return_book(student_user.rollnumber, isbn)
-            library.save_data()
 
         elif userChoice == "5":
             library.view_borrowed_books(student_user.rollnumber)
