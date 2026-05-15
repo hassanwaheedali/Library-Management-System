@@ -1,516 +1,592 @@
-import json
 from datetime import datetime
 
-from book import Book
-from person import Admin, Librarian, Student
+from database import get_db_connection
+from models import Admin, Book, Librarian, Student, User
 
 
 class Library:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     def __init__(self):
-        self._books = []
-        self._issuedBooks = []
-        self._users = []
+        self._ensure_default_admin()
 
-    @property
-    def books(self):
-        return self._books
-
-    @property
-    def issuedBooks(self):
-        return self._issuedBooks
-
-    @property
-    def users(self):
-        return self._users
-
-    # User Management Methods
-
-    def login(self, username, password):
-        for user in self._users:
-            if user.username == username and user.check_password(password):
-                print(f"✅ Login Successful! Welcome, {user.name} ({user.get_role()})")
-                return user
-        print("❌ Invalid Username or Password")
-        return None
-
-    def change_password(self, username, old_password, new_password):
-        for user in self._users:
-            if user.username == username:
-                if user.check_password(old_password):
-                    user.password = user.hash_password(new_password)
-                    self.save_users_data()
-                    print("✅ Password changed successfully!")
-                    return
-                else:
-                    print("❌ Error: Old password is incorrect!")
-                    return
-        print("❌ Error: User not found!")
-        return
-
-    def change_username(self, old_username, new_username):
-        # Check if new username already exists
-        for user in self._users:
-            if user.username == new_username:
-                print(
-                    "❌ Error: Username already exists! Please choose a different username."
-                )
-                return False
-
-        # Find and update the user
-        for user in self._users:
-            if user.username == old_username:
-                user.username = new_username
-                self.save_users_data()
-                print("✅ Username changed successfully!")
-                return True
-        print("❌ Error: User not found!")
-        return False
-
-    def add_admin(self, name, username, password, admin_id):
-        for user in self._users:
-            if user.username == username:
-                print("❌ Error: Admin with this username already exists!")
-                return
-        new_admin = Admin(name, username, password, admin_id)
-        self._users.append(new_admin)
-        self.save_users_data()
-        print(f"✅ Admin {name} Added Successfully!")
-
-    def add_librarian(self, name, username, password, employee_id):
-        for user in self._users:
-            if user.username == username:
-                print("❌ Error: Librarian with this username already exists!")
-                return
-        new_librarian = Librarian(name, username, password, employee_id)
-        self._users.append(new_librarian)
-        self.save_users_data()
-        print(f"✅ Librarian {name} Added Successfully!")
-
-    def add_student(self, name, username, password, student_id):
-        for user in self._users:
-            if user.username == username:
-                print("❌ Error: Student with this username already exists!")
-                return
-        new_student = Student(name, username, password, student_id)
-        self._users.append(new_student)
-        self.save_users_data()
-        print(f"✅ Student {name} Added Successfully!")
-
-    def view_all_users(self):
-        if not self._users:
-            print("📭 No users found in the system.")
+    def _ensure_default_admin(self):
+        try:
+            query = "SELECT COUNT(*) AS total FROM users"
+            self.cursor.execute(query)
+            total_users = self.cursor.fetchone()["total"]
+            if total_users == 0:
+                created = self.add_admin("Admin", "admin", "admin")
+                if created:
+                    print("⚠️ No users found. A default admin user has been created.")
+        except Exception as e:
+            print(f"❌ Error: Could not ensure default admin! {e}")
             return
 
-        print("\n" + "=" * 60)
-        print("👥 ALL USERS IN THE SYSTEM")
-        print("=" * 60)
+    # User Management Methods
+    def login(self, username, password):
+        try:
+            query = "SELECT * FROM vw_user_profiles WHERE username = %s"
+            self.cursor.execute(query, (username,))
+            user_data = self.cursor.fetchone()
+            if user_data:
+                base_data = {
+                    "id": user_data["id"],
+                    "username": user_data["username"],
+                    "password": user_data["password"],
+                    "name": user_data["name"],
+                    "created_at": user_data.get("created_at"),
+                    "updated_at": user_data.get("updated_at"),
+                }
+                if not User(**base_data).check_password(password):
+                    print("❌ Invalid Username or Password")
+                    return None
+                if user_data.get("admin_id") is not None:
+                    user = Admin(**{**base_data, "admin_id": user_data["admin_id"]})
+                elif user_data.get("employee_id") is not None:
+                    user = Librarian(
+                        **{**base_data, "employee_id": user_data["employee_id"]}
+                    )
+                elif user_data.get("rollnumber") is not None:
+                    user = Student(
+                        **{**base_data, "rollnumber": user_data["rollnumber"]}
+                    )
+                else:
+                    user = User(**base_data)
+                print(f"✅ Login Successful! Welcome, {user.name} ({user.role})")
+                return user
+            print("❌ Invalid Username or Password")
+            return None
+        except Exception:
+            print("❌ Error: Could not login!")
+            return None
 
-        admins = [u for u in self._users if u.get_role() == "Admin"]
-        librarians = [u for u in self._users if u.get_role() == "Librarian"]
-        students = [u for u in self._users if u.get_role() == "Student"]
+    def change_password(self, username, old_password, new_password):
+        try:
+            query = "SELECT * FROM users WHERE username = %s"
+            self.cursor.execute(query, (username,))
+            user_data = self.cursor.fetchone()
+            if user_data:
+                user = User(**user_data)
+                if user.check_password(old_password):
+                    query = "UPDATE users SET password = %s WHERE username = %s"
+                    self.cursor.execute(
+                        query, (user.hash_password(new_password), username)
+                    )
+                    self.conn.commit()
+                    print("✅ Password changed successfully!")
+                    return True
+                print("❌ Invalid Username or Password")
+                return False
+            print("❌ Invalid Username or Password")
+            return False
+        except Exception:
+            self.conn.rollback()
+            print("❌ Error: Could not change password!")
+            return False
 
-        if admins:
-            print("\n👑 ADMINS:")
-            print("-" * 60)
+    def change_username(self, old_username, new_username):
+        try:
+            query = "SELECT * FROM users WHERE username = %s"
+            self.cursor.execute(query, (old_username,))
+            user_data = self.cursor.fetchone()
+            if user_data:
+                query = "UPDATE users SET username = %s WHERE username = %s"
+                self.cursor.execute(query, (new_username, old_username))
+                self.conn.commit()
+                print("✅ Username changed successfully!")
+                return True
+            print("❌ Invalid Username")
+            return False
+        except Exception:
+            self.conn.rollback()
+            print("❌ Error: Could not change username!")
+            return False
+
+    def add_admin(self, name, username, password):
+        try:
+            # 1. Check if user already exists
+            query = "SELECT * FROM users WHERE username = %s"
+            self.cursor.execute(query, (username,))
+            if self.cursor.fetchone():
+                print("❌ Error: Admin with this username already exists!")
+                return False
+
+            # 2. Insert into Parent table (users) and grab the new ID!
+            query_user = "INSERT INTO users (name, username, password) VALUES (%s, %s, %s) RETURNING id"
+            self.cursor.execute(
+                query_user, (name, username, User.hash_password(password))
+            )
+
+            new_user_id = self.cursor.fetchone()["id"]
+
+            # 3. Insert into Child table (admins) using that ID
+            query_admin = "INSERT INTO admins (user_id) VALUES (%s)"
+            self.cursor.execute(query_admin, (new_user_id,))
+
+            self.conn.commit()
+            print(f"✅ Admin {name} Added Successfully!")
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not add admin! {e}")
+            return False
+
+    def add_librarian(self, name, username, password, employee_id):
+        try:
+            query = "SELECT * FROM users WHERE username = %s"
+            self.cursor.execute(query, (username,))
+            if self.cursor.fetchone():
+                print("❌ Error: Librarian with this username already exists!")
+                return False
+
+            query_user = "INSERT INTO users (name, username, password) VALUES (%s, %s, %s) RETURNING id"
+            self.cursor.execute(
+                query_user, (name, username, User.hash_password(password))
+            )
+            new_user_id = self.cursor.fetchone()["id"]
+
+            query_librarian = (
+                "INSERT INTO librarians (user_id, employee_id) VALUES (%s, %s)"
+            )
+            self.cursor.execute(query_librarian, (new_user_id, employee_id))
+
+            self.conn.commit()
+            print(f"✅ Librarian {name} Added Successfully!")
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not add librarian! {e}")
+            return False
+
+    def add_student(self, name, username, password, rollnumber):
+        try:
+            query = "SELECT * FROM users WHERE username = %s"
+            self.cursor.execute(query, (username,))
+            if self.cursor.fetchone():
+                print("❌ Error: Student with this username already exists!")
+                return False
+
+            query_user = "INSERT INTO users (name, username, password) VALUES (%s, %s, %s) RETURNING id"
+            self.cursor.execute(
+                query_user, (name, username, User.hash_password(password))
+            )
+
+            new_student_id = self.cursor.fetchone()["id"]
+            query_student = "INSERT INTO students (user_id, rollnumber) VALUES (%s, %s)"
+            self.cursor.execute(query_student, (new_student_id, rollnumber))
+
+            self.conn.commit()
+            print(f"✅ Student {name} Added Successfully!")
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not add student! {e}")
+            return False
+
+    def view_all_users(self):
+        try:
+            print("\n" + "=" * 60)
+            print("👥 ALL USERS IN THE SYSTEM")
+            print("=" * 60)
+            admins_query = (
+                "SELECT * FROM users u INNER JOIN admins a ON a.user_id = u.id;"
+            )
+            self.cursor.execute(admins_query)
+            admins_data = self.cursor.fetchall()
+            admins = [Admin(**admin) for admin in admins_data]
+
+            librarians_query = (
+                "SELECT * FROM users u INNER JOIN librarians l ON l.user_id = u.id;"
+            )
+            self.cursor.execute(librarians_query)
+            librarians_data = self.cursor.fetchall()
+            librarians = [Librarian(**librarian) for librarian in librarians_data]
+
+            students_query = (
+                "SELECT * FROM users u INNER JOIN students s ON s.user_id = u.id;"
+            )
+            self.cursor.execute(students_query)
+            students_data = self.cursor.fetchall()
+            students = [Student(**student) for student in students_data]
+
+            if not admins and not librarians and not students:
+                print("📭 No users found in the system.")
+                return
+
+            print("=" * 60)
+            print(
+                f"Total Users: {len(admins) + len(librarians) + len(students)} (Admins: {len(admins)}, Librarians: {len(librarians)}, Students: {len(students)})"
+            )
+            print("=" * 60)
             for admin in admins:
-                print(
-                    f"  Name: {admin.name} | Username: {admin.username} | Admin ID: {admin.admin_id}"
-                )
-
-        if librarians:
-            print("\n👨‍💼 LIBRARIANS:")
-            print("-" * 60)
-            for lib in librarians:
-                print(
-                    f"  Name: {lib.name} | Username: {lib.username} | Employee ID: {lib.employee_id}"
-                )
-
-        if students:
-            print("\n📚 STUDENTS:")
-            print("-" * 60)
+                print(admin)
+            for librarian in librarians:
+                print(librarian)
             for student in students:
-                print(
-                    f"  Name: {student.name} | Username: {student.username} | Roll No: {student.rollnumber}"
-                )
+                print(student)
+            print("=" * 60)
+            return
+        except Exception as e:
+            print(f"❌ Error: Could not view users! {e}")
+            return
+        finally:
+            print("=" * 60)
 
-        print("=" * 60)
-        print(
-            f"Total Users: {len(self._users)} (Admins: {len(admins)}, Librarians: {len(librarians)}, Students: {len(students)})"
-        )
-        print("=" * 60)
+    def view_all_students(self):
+        try:
+            query = "SELECT * FROM users u INNER JOIN students s ON s.user_id = u.id;"
+            self.cursor.execute(query)
+            students_data = self.cursor.fetchall()
+            students = [Student(**student) for student in students_data]
+            if not students:
+                print("📭 No students found in the system.")
+                return
+            print("\n" + "=" * 60)
+            print("🎓 ALL STUDENTS IN THE SYSTEM")
+            print("=" * 60)
+            for student in students:
+                print(student)
+            print("=" * 60)
+            return
+        except Exception as e:
+            print(f"❌ Error: Could not view students! {e}")
+            return
 
     # Book Management Methods
 
     def add_books(self, title, author, isbn, quantity, shelfNumber):
-        if quantity < 0:
-            print("❌ Error: Quantity cannot be negative!")
-            return
-        if shelfNumber < 0:
-            print("❌ Error: Shelf Number cannot be negative!")
-            return
-        if any(book.isbn == isbn for book in self.books):
-            print("❌ Error: A book with this ISBN already exists!")
-            return
-        if any(book.title == title for book in self.books):
-            print("Book with this title already exists.")
-            return
+        try:
+            if quantity < 0:
+                print("❌ Error: Quantity cannot be negative!")
+                return False
 
-        new_books = Book(title, author, isbn, quantity, shelfNumber)
-        self._books.append(new_books)
-        print("Book Added Successfully!")
+            if shelfNumber < 0:
+                print("❌ Error: Shelf Number cannot be negative!")
+                return False
+
+            isbn_query = "SELECT 1 FROM books WHERE isbn = %s"
+            self.cursor.execute(isbn_query, (isbn,))
+            if self.cursor.fetchone():
+                print("❌ Error: A book with this ISBN already exists!")
+                return False
+
+            title_query = "SELECT 1 FROM books WHERE LOWER(title) = LOWER(%s)"
+            self.cursor.execute(title_query, (title,))
+            if self.cursor.fetchone():
+                print("❌ Error: A book with this title already exists!")
+                return False
+
+            insert_query = (
+                "INSERT INTO books (title, author, isbn, quantity, shelf_number) "
+                "VALUES (%s, %s, %s, %s, %s)"
+            )
+            self.cursor.execute(
+                insert_query, (title, author, isbn, quantity, shelfNumber)
+            )
+            self.conn.commit()
+            print("✅ Book added successfully!")
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not add book! {e}")
+            return False
 
     def update_book(self, isbn, choice):
-        for book in self.books:
-            if isbn == book.isbn:
-                user_choice = choice.lower()
-                if user_choice == "title":
-                    new_title = input("Please Write Title: ")
-                    book.title = new_title
-                elif user_choice == "author":
-                    new_author = input("Please Write Author: ")
-                    book.author = new_author
-                elif user_choice == "isbn":
-                    try:
-                        new_isbn = int(input("Please Write ISBN Number: "))
-                        if any(b.isbn == new_isbn and b != book for b in self.books):
-                            print("❌ Error: A book with this ISBN already exists!")
-                            return
-                        old_isbn = book.isbn
-                        book.isbn = new_isbn
-                        # Update all issued books records with the new ISBN
-                        for issued in self._issuedBooks:
-                            if issued["isbn"] == old_isbn:
-                                issued["isbn"] = new_isbn
-                    except ValueError:
-                        print("❌ Error: ISBN must be a number!")
-                        return
-                elif user_choice == "quantity":
-                    try:
-                        new_quantity = int(input("Please Write Quantity: "))
-                        if new_quantity < 0:
-                            print("❌ Error: Quantity cannot be negative!")
-                            return
-                        book.quantity = new_quantity
-                    except ValueError:
-                        print("❌ Error: Quantity must be a number!")
-                        return
-                elif user_choice == "shelfnumber":
-                    try:
-                        new_shelfNumber = int(
-                            input("Please Write Shelf Number without Dashes: ")
-                        )
-                        if new_shelfNumber < 0:
-                            print("❌ Error: Shelf Number cannot be negative!")
-                            return
-                        book.shelfNumber = new_shelfNumber
-                    except ValueError:
-                        print("❌ Error: Shelf Number must be a number!")
-                        return
-                else:
-                    print("❌ Invalid Update Choice!")
-                    return
-                print("Book Updated Successfully!")
-                return
-        print("❌ No Book Found Matched To ISBN Number")
+        try:
+            query = "SELECT * FROM books WHERE isbn = %s"
+            self.cursor.execute(query, (isbn,))
+            book_data = self.cursor.fetchone()
+            if not book_data:
+                print(f"❌ Error: Book with ISBN {isbn} not found!")
+                return False
+            book = Book(**book_data)
+            user_choice = choice.lower()
+            if user_choice == "title":
+                new_title = input("Please Write Title: ")
+                book.title = new_title
+                query = "UPDATE books SET title = %s WHERE isbn = %s"
+                self.cursor.execute(query, (new_title, isbn))
+                self.conn.commit()
+                print("✅ Book title updated successfully!")
+            elif user_choice == "author":
+                new_author = input("Please Write Author: ")
+                book.author = new_author
+                query = "UPDATE books SET author = %s WHERE isbn = %s"
+                self.cursor.execute(query, (new_author, isbn))
+                self.conn.commit()
+                print("✅ Book author updated successfully!")
+            elif user_choice == "isbn":
+                new_isbn = int(input("Please Write ISBN Number: "))
+                old_isbn = book.isbn
+                book.isbn = new_isbn
+                query = "UPDATE books SET isbn = %s WHERE isbn = %s"
+                self.cursor.execute(query, (new_isbn, old_isbn))
+                self.conn.commit()
+                print("✅ Book ISBN updated successfully!")
+            elif user_choice == "quantity":
+                new_quantity = int(input("Please Write Quantity: "))
+                book.quantity = new_quantity
+                query = "UPDATE books SET quantity = %s WHERE isbn = %s"
+                self.cursor.execute(query, (new_quantity, isbn))
+                self.conn.commit()
+                print("✅ Book quantity updated successfully!")
+            elif user_choice in ("shelf_number", "shelfnumber"):
+                new_shelf_number = int(input("Please Write Shelf Number: "))
+                book.shelf_number = new_shelf_number
+                query = "UPDATE books SET shelf_number = %s WHERE isbn = %s"
+                self.cursor.execute(query, (new_shelf_number, isbn))
+                self.conn.commit()
+                print("✅ Book shelf number updated successfully!")
+            else:
+                print("❌ Error: Invalid choice!")
+                return False
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not update book! {e}")
+            return False
 
     def remove_books(self, isbn):
-        for book in self.books:
-            if isbn == book.isbn:
-                # Check if book is currently issued
-                for issued in self._issuedBooks:
-                    if issued["isbn"] == isbn:
-                        print(
-                            "❌ Error: Cannot remove book that is currently issued to students!"
-                        )
-                        print("Please wait for all copies to be returned first.")
-                        return
-                self._books.remove(book)
-                print("Book Removed Successfully!")
-                return
-        print("❌ No Book Found Matched To ISBN Number")
+        try:
+            book_query = "SELECT * FROM books WHERE isbn = %s"
+            self.cursor.execute(book_query, (isbn,))
+            book = self.cursor.fetchone()
+            if not book:
+                print("❌ No Book Found Matched To ISBN Number")
+                return False
+
+            check_issued_book = "SELECT * FROM issued_books WHERE book_isbn = %s"
+            self.cursor.execute(check_issued_book, (isbn,))
+            issued_book = self.cursor.fetchone()
+            if issued_book:
+                print(
+                    "❌ Error: Cannot remove book that is currently issued to students!"
+                )
+                print("Please wait for all copies to be returned first.")
+                return False
+
+            delete_query = "DELETE FROM books WHERE isbn = %s"
+            self.cursor.execute(delete_query, (isbn,))
+            self.conn.commit()
+            print("✅ Book removed successfully!")
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not remove book! {e}")
+            return False
 
     def display_books(self):
-        if not self.books:
-            print("📭 The library is empty.")
+        try:
+            query = "SELECT * FROM books"
+            self.cursor.execute(query)
+            books = self.cursor.fetchall()
+            if not books:
+                print("📭 The library is empty.")
+                return
+            print("\n--- Current Library Collection ---")
+            for book_data in books:
+                # Convert the raw dictionary into your Pydantic Book model!
+                book = Book(**book_data)
+                print(book)
+        except Exception as e:
+            print(f"❌ Error: Could not display books! {e}")
             return
-
-        print("\n--- Current Library Collection ---")
-        for book in self.books:
-            print(book)
 
     def search_books(self, value):
         print("Searching....")
-        found = False
-        isbn_value = None
         try:
-            isbn_value = int(value)
-        except ValueError:
-            pass
-
-        for book in self.books:
-            if (
-                value.lower() in book.title.lower()
-                or value.lower() in book.author.lower()
-                or (isbn_value is not None and isbn_value == book.isbn)
-            ):
+            search_query = "SELECT * FROM books WHERE LOWER(title) LIKE %s OR LOWER(author) LIKE %s OR isbn::text = %s"
+            self.cursor.execute(
+                search_query, (f"%{value.lower()}%", f"%{value.lower()}%", value)
+            )
+            books = self.cursor.fetchall()
+            if not books:
+                print("📭 No Books Found Matched To Search Value")
+                return
+            for book_data in books:
+                book = Book(**book_data)
                 print(book)
-                found = True
-        if not found:
-            print("❌ No Books Found Matched To Search Value")
+        except Exception as e:
+            print(f"❌ Error: Could not search books! {e}")
+            return
 
     def find_shelf_books(self, shelfNumber):
-        found = False
-        print("Searching....")
-        # Convert shelfNumber to int if it's a string
         try:
-            shelf_num = int(shelfNumber)
-        except ValueError, TypeError:
-            print("❌ Error: Shelf Number must be a valid number!")
-            return
-
-        print(f"\n--- Books in Shelf Number: {shelf_num} ---")
-        for book in self.books:
-            if shelf_num == book.shelfNumber:
+            query = "SELECT * FROM books WHERE shelf_number = %s"
+            self.cursor.execute(query, (shelfNumber,))
+            books = self.cursor.fetchall()
+            if not books:
+                print("📭 No Books Found Matched To Shelf Number")
+                return
+            print(f"\n--- Books on Shelf Number: {shelfNumber} ---")
+            for book_data in books:
+                book = Book(**book_data)
                 print(book)
-                found = True
-        if not found:
-            print(f"❌ No Books Found in Shelf Number {shelf_num}")
+        except Exception as e:
+            print(f"❌ Error: Could not find books on shelf! {e}")
+            return
 
     def issue_book(self, rollNo, isbn):
-        # Check if student exists
-        student = None
-        # Convert rollNo to string to ensure type consistency
-        rollNo = str(rollNo)
-        for user in self._users:
-            if user.get_role() == "Student" and str(user.rollnumber) == rollNo:
-                student = user
-                break
-
-        if student is None:
-            print(f"❌ Error: Student with Roll Number {rollNo} does not exist!")
-            print("Please add the student first before issuing a book.")
+        try:
+            query_student = "SELECT * FROM users u INNER JOIN students s ON s.user_id = u.id WHERE s.rollnumber = %s"
+            self.cursor.execute(query_student, (rollNo,))
+            student_data = self.cursor.fetchone()
+            if not student_data:
+                print(f"❌ Error: Student with Roll Number {rollNo} does not exist!")
+                print("Please add the student first before issuing a book.")
+                return False
+            student = Student(**student_data)
+            query_book = "SELECT * FROM books WHERE isbn = %s"
+            self.cursor.execute(query_book, (isbn,))
+            book_data = self.cursor.fetchone()
+            if not book_data:
+                print("❌ No Book Found Matched To ISBN Number")
+                return False
+            book = Book(**book_data)
+            if book.quantity <= 0:
+                print("🚫 Sorry, this book is currently out of stock!")
+                return False
+            insert_issue_query = (
+                "INSERT INTO issued_books (student_id, book_isbn, issued_at) "
+                "VALUES (%s, %s, %s)"
+            )
+            self.cursor.execute(insert_issue_query, (student.id, isbn, datetime.now()))
+            update_book_query = (
+                "UPDATE books SET quantity = quantity - 1 WHERE isbn = %s"
+            )
+            self.cursor.execute(update_book_query, (isbn,))
+            self.conn.commit()
+            print(f"✅ Book Issued to {student.name} ({rollNo}) Successfully!")
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not issue book! {e}")
             return False
 
-        # Check if book exists and is available
-        for book in self.books:
-            if isbn == book.isbn:
-                if book.quantity > 0:
-                    book.quantity -= 1
-                    timeStamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    # Store only foreign keys (like database foreign keys)
-                    issue_entry = {
-                        "timeStamp": timeStamp,
-                        "rollNo": rollNo,  # Foreign key to student
-                        "isbn": book.isbn,  # Foreign key to book
-                    }
-                    self._issuedBooks.append(issue_entry)
-                    self.save_data()
-                    print(
-                        f"📖 Book Issued to {student.name} ({rollNo}) Successfully! Remaining: {book.quantity}"
-                    )
-                    return True
-                else:
-                    print("🚫 Sorry, this book is currently out of stock!")
-                    return False
-        print("❌ No Book Found Matched To ISBN Number")
-        return False
-
     def check_issue_books(self):
-        if not self._issuedBooks:
-            print("📭 No books have been issued yet.")
+        try:
+            query = """
+            SELECT * FROM 
+            vw_issued_books_details
+            ORDER BY issued_at DESC
+            """
+            self.cursor.execute(query)
+            issued_books_data = self.cursor.fetchall()
+
+            if not issued_books_data:
+                print("📭 No books have been issued yet.")
+                return
+
+            print("\n" + "=" * 80)
+            print("📚 ISSUED BOOKS HISTORY")
+            print("=" * 80)
+            for entry in issued_books_data:
+                print(
+                    f"📖 Book: {entry['book_title']} (ISBN: {entry['book_isbn']}) | "
+                    f"Student: {entry['student_name']} (Roll: {entry['rollnumber']}) | "
+                    f"Issued: {entry['issued_at']} | "
+                    f"Returned: {entry['returned_at']}"
+                )
+            print("=" * 80)
+        except Exception as e:
+            print(f"❌ Error: Could not retrieve issued books! {e}")
             return
 
-        print("\n--- All Issued Books History ---")
-        for entry in self._issuedBooks:
-            # Lookup student and book using foreign keys
-            student_name = "Unknown Student"
-            for user in self._users:
-                if user.get_role() == "Student" and str(user.rollnumber) == str(
-                    entry["rollNo"]
-                ):
-                    student_name = user.name
-                    break
-
-            book_title = "Unknown Book"
-            for book in self._books:
-                if book.isbn == entry["isbn"]:
-                    book_title = book.title
-                    break
-
-            print(
-                f"{entry['timeStamp']} - {book_title} (ISBN: {entry['isbn']}) issued to {student_name} (Roll No: {entry['rollNo']})"
-            )
-
     def check_issue_books_finder(self, rollnumber):
-        found = False
-        # Convert to string to ensure type consistency
-        rollnumber = str(rollnumber)
-        for entry in self.issuedBooks:
-            if str(entry["rollNo"]) == rollnumber:
-                if not found:
-                    print(f"\n--- Search Results for Roll Number: {rollnumber} ---")
-                    found = True
+        try:
+            query = """
+            SELECT * FROM vw_issued_books_details WHERE rollnumber = %s
+            ORDER BY issued_at DESC
+            """
+            self.cursor.execute(query, (rollnumber,))
+            issued_books_data = self.cursor.fetchall()
 
-                # Lookup student and book using foreign keys
-                student_name = "Unknown Student"
-                for user in self._users:
-                    if (
-                        user.get_role() == "Student"
-                        and str(user.rollnumber) == rollnumber
-                    ):
-                        student_name = user.name
-                        break
+            if not issued_books_data:
+                print(f"📭 No records found for Roll Number: {rollnumber}")
+                return
 
-                book_title = "Unknown Book"
-                for book in self._books:
-                    if book.isbn == entry["isbn"]:
-                        book_title = book.title
-                        break
-
+            print(f"\n--- Search Results for Roll Number: {rollnumber} ---")
+            for entry in issued_books_data:
                 print(
-                    f"🕒 {entry['timeStamp']} | Book: {book_title} (ISBN: {entry['isbn']}) | Student: {student_name} (Roll No: {rollnumber})"
+                    f"📖 Book: {entry['book_title']} (ISBN: {entry['book_isbn']}) | "
+                    f"Student: {entry['student_name']} (Roll: {entry['rollnumber']}) | "
+                    f"Issued: {entry['issued_at']}"
+                    f" | Returned: {entry['returned_at']}"
                 )
-        if not found:
-            print(f"⚠️ No records found for Roll Number: {rollnumber}")
+        except Exception as e:
+            print(f"❌ Error: Could not search issued books! {e}")
+            return
 
     def return_book(self, rollNo, isbn):
-        # Convert to string to ensure type consistency
-        rollNo = str(rollNo)
-        for book in self.books:
-            if book.isbn == isbn:
-                for issueBook in self._issuedBooks:
-                    if str(issueBook["rollNo"]) == rollNo and issueBook["isbn"] == isbn:
-                        self._issuedBooks.remove(issueBook)
-                        book.quantity += 1
-                        self.save_data()
-                        print(
-                            f"✅ Book with ISBN {isbn} returned successfully by {rollNo}."
-                        )
-                        return
+        try:
+            # Instead of DELETE, we UPDATE the returned_at timestamp!
+            update_issue_query = """
+                UPDATE issued_books i
+                SET returned_at = NOW()
+                FROM students s
+                WHERE s.user_id = i.student_id
+                AND s.rollnumber = %s
+                AND i.book_isbn = %s
+                AND i.returned_at IS NULL;
+            """
+            self.cursor.execute(update_issue_query, (rollNo, isbn))
+            if self.cursor.rowcount == 0:
                 print(
-                    f"❌ No issued record found for Roll Number {rollNo} with ISBN {isbn}"
+                    f"❌ No active issued record found for Roll Number {rollNo} with ISBN {isbn}"
                 )
-                return
-        print("❌ No Book Found Matched To ISBN Number")
-        return
+                return False
+
+            # Restore the book quantity
+            update_book_query = (
+                "UPDATE books SET quantity = quantity + 1 WHERE isbn = %s"
+            )
+            self.cursor.execute(update_book_query, (isbn,))
+            self.conn.commit()
+            print(
+                f"✅ Book with ISBN {isbn} returned successfully by Roll Number {rollNo}."
+            )
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error: Could not return book! {e}")
+            return False
 
     # Student Specific Methods
 
     def view_borrowed_books(self, rollnumber):
         print("\n--- Borrowed Books ---")
-        found = False
-        # Convert to string to ensure type consistency
-        rollnumber = str(rollnumber)
-        for entry in self.issuedBooks:
-            if str(entry["rollNo"]) == rollnumber:
-                found = True
-                # Lookup book title using ISBN
-                book_title = "Unknown Book"
-                for book in self._books:
-                    if book.isbn == entry["isbn"]:
-                        book_title = book.title
-                        break
+        try:
+            query = """
+            SELECT
+                b.title AS book_title,
+                b.isbn,
+                i.issued_at,
+                s.rollnumber,
+                u.name AS student_name
+            FROM issued_books i
+            INNER JOIN students s ON i.student_id = s.user_id
+            INNER JOIN books b ON i.book_isbn = b.isbn
+            INNER JOIN users u ON s.user_id = u.id
+            WHERE s.rollnumber = %s
+            ORDER BY i.issued_at DESC
+        """
+            self.cursor.execute(query, (rollnumber,))
+            borrowed_books = self.cursor.fetchall()
 
+            print("\n--- Borrowed Books ---")
+            if not borrowed_books:
+                print("📭 No borrowed books found for this student.")
+                return
+
+            for entry in borrowed_books:
                 print(
-                    f"📖 Book Title: {book_title} | ISBN: {entry['isbn']} | Issued to: RollNO ({entry['rollNo']}) | Issued On: {entry['timeStamp']}"
+                    f"📖 Book Title: {entry['book_title']} | "
+                    f"ISBN: {entry['isbn']} | "
+                    f"Issued to: {entry['student_name']} ({entry['rollnumber']}) | "
+                    f"Issued On: {entry['issued_at']}"
                 )
-        if not found:
-            print("📭 No borrowed books found for this student.")
-
-    # Data Management Methods
-
-    def save_data(self, filename="library_data.json"):
-        data = {
-            "Books": [book.to_dict() for book in self.books],
-            "issuedBooks": self.issuedBooks,
-        }
-        with open(filename, "w") as file:
-            json.dump(data, file, indent=4)
-
-        print(f"💾 Data saved successfully to {filename}")
-
-    def save_users_data(self, filename="users_data.json"):
-        data = {
-            "Users": [user.to_dict() for user in self.users],
-        }
-        with open(filename, "w") as file:
-            json.dump(data, file, indent=4)
-
-        print(f"💾 Users data saved successfully to {filename}")
-
-    def load_data(self, filename="library_data.json"):
-        try:
-            with open(filename, "r") as file:
-                data = json.load(file)
-                self._books = []
-                for b in data.get("Books", []):
-                    book = Book(
-                        b["title"],
-                        b["author"],
-                        int(b["isbn"]),
-                        b["quantity"],
-                        b["shelfNumber"],
-                    )
-                    self._books.append(book)
-
-                issued_books_data = data.get("issuedBooks", [])
-                self._issuedBooks = []
-                for entry in issued_books_data:
-                    entry_copy = entry.copy()
-                    entry_copy["isbn"] = int(entry_copy["isbn"])
-                    self._issuedBooks.append(entry_copy)
-
-                print(f"📂 Data loaded successfully from {filename}.")
-        except FileNotFoundError:
-            print("📝 No previous data found. Starting with an empty library.")
         except Exception as e:
-            print("Unknown Error Occured Please Contact Support", e)
-
-    def load_users_data(self, filename="users_data.json"):
-        try:
-            with open(filename, "r") as file:
-                data = json.load(file)
-                self._users = []
-                users_data = data.get("Users", [])
-                for user_data in users_data:
-                    if user_data["role"] == "Admin":
-                        user = Admin(
-                            user_data["name"],
-                            user_data.get(
-                                "username", user_data.get("user_id")
-                            ),  # Support old files
-                            user_data["password"],
-                            user_data["admin_id"],
-                            password_is_hashed=True,
-                        )
-                        self._users.append(user)
-                    elif user_data["role"] == "Librarian":
-                        user = Librarian(
-                            user_data["name"],
-                            user_data.get(
-                                "username", user_data.get("user_id")
-                            ),  # Support old files
-                            user_data["password"],
-                            user_data["employee_id"],
-                            password_is_hashed=True,
-                        )
-                        self._users.append(user)
-                    elif user_data["role"] == "Student":
-                        user = Student(
-                            user_data["name"],
-                            user_data.get(
-                                "username", user_data.get("user_id")
-                            ),  # Support old files
-                            user_data["password"],
-                            user_data["rollnumber"],
-                            password_is_hashed=True,
-                        )
-                        self._users.append(user)
-                print(f"📂 Users data loaded successfully from {filename}.")
-        except FileNotFoundError:
-            print("📝 No previous users data found. Starting with no users.")
-            # by default only 1 admin user
-            default_admin = Admin("Default Admin", "admin", "admin123", 1)
-            self._users.append(default_admin)
-        except Exception as e:
-            print("Unknown Error Occured Please Contact Support", e)
+            print(f"❌ Error: Could not retrieve borrowed books! {e}")
+            return

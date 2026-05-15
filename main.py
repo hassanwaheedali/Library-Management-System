@@ -51,7 +51,6 @@ def admin_panel(library, admin):
                 print("❌ Error: Shelf Number must be a number!")
                 continue
             library.add_books(title, author, isbn, quantity, shelfNumber)
-            library.save_data()
             print("Book Added Successfully!")
 
         elif choice == "2":
@@ -66,7 +65,6 @@ def admin_panel(library, admin):
                 continue
 
             library.remove_books(isbn)
-            library.save_data()
             print("Book Removed Successfully!")
 
         elif choice == "3":
@@ -175,7 +173,6 @@ def librarian_panel(library, librarian_user):
                 continue
 
             library.add_books(title, author, isbn, quantity, shelfNumber)
-            library.save_data()
 
         elif userChoice == "2":
             try:
@@ -188,10 +185,9 @@ def librarian_panel(library, librarian_user):
                 print("❌ Error: ISBN must be a number!")
                 continue
             choice = input(
-                "Please Write What To Update (title, author, isbn, quantity, shelfnumber): "
+                "Please Write What To Update (title, author, isbn, quantity, shelf_number): "
             )
             library.update_book(isbn, choice)
-            library.save_data()
 
         elif userChoice == "3":
             library.display_books()
@@ -212,7 +208,6 @@ def librarian_panel(library, librarian_user):
                 continue
 
             library.remove_books(isbn)
-            library.save_data()
 
         elif userChoice == "6":
             try:
@@ -241,16 +236,13 @@ def librarian_panel(library, librarian_user):
                     password = input("Enter Student Password: ")
                     rollNo = input("Enter Student Roll Number: ")
                     library.add_student(name, username, password, rollNo)
-                    library.save_users_data()
 
                     # Try issuing the book again
                     print("\nNow issuing the book...")
                     library.issue_book(rollNo, isbn)
-                    library.save_data()
                 else:
                     print("❌ Book issue cancelled.")
             else:
-                library.save_data()
                 print(f"✅ Book issued successfully to student with Roll No: {rollNo}")
 
         elif userChoice == "7":
@@ -263,9 +255,8 @@ def librarian_panel(library, librarian_user):
             except ValueError:
                 print("❌ Error: ISBN must be a number!")
                 continue
-            rollNo = input("Please Enter Your Roll Number: ")
+            rollNo = input("Please Enter Student Roll Number: ")
             library.return_book(rollNo, isbn)
-            library.save_data()
 
         elif userChoice == "8":
             library.check_issue_books()
@@ -294,11 +285,10 @@ def librarian_panel(library, librarian_user):
                 continue
             rollNo = input("Enter Student Roll Number: ")
             library.add_student(name, username, password, rollNo)
-            library.save_users_data()
             print("✅ Student Added Successfully!")
 
         elif userChoice == "12":
-            library.view_all_users()
+            library.view_all_students()
 
         elif userChoice == "13":
             username = input("Enter Username: ")
@@ -393,9 +383,6 @@ def student_panel(library, student_user):
 
 def main():
     library = Library()
-    library.load_data()
-    library.load_users_data()
-
     print("=" * 50)
     print("--- Welcome to the Library Management System! ---")
     print("=" * 50)
@@ -419,12 +406,14 @@ def main():
                 break
         else:
             # Execute appropriate panel
-            if user.get_role() == "Admin":
+            if user.role == "Admin":
                 admin_panel(library, user)
-            elif user.get_role() == "Librarian":
+            elif user.role == "Librarian":
                 librarian_panel(library, user)
-            elif user.get_role() == "Student":
+            elif user.role == "Student":
                 student_panel(library, user)
+            else:
+                print("❌ Unknown role. Contact the administrator.")
 
             # After logout, ask if user wants to login again
             continue_login = input(

@@ -1,537 +1,389 @@
+<div align="center">
+
 # 📚 Library Management System
 
-A comprehensive Python-based Library Management System with role-based access control, user authentication, and persistent data storage. Designed to efficiently manage book collections, user accounts, track inventory, and handle book issuing/returning operations.
+**A complete, production-ready library management solution built with Python & PostgreSQL**
 
-## 🌟 Features
+![Python](https://img.shields.io/badge/Python-3.14+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-### Authentication & Authorization
+---
 
-- **Role-Based Access Control**: Three distinct user roles (Admin, Librarian, Student)
-- **Secure Login System**: Username and password authentication
-- **Default Admin Account**: Pre-configured admin for initial setup (username: `admin`, password: `admin123`)
+*Manage books, users, and transactions through an intuitive command-line interface with role-based access control and secure authentication.*
 
-### User Management
+</div>
 
-- **Add Students**: Register new students with username, password, and roll number
-- **Add Librarians**: Register librarian accounts with employee IDs
-- **View All Users**: Display complete list of all system users by role
-- **Change Password**: Update password for any user account (requires old password verification)
-- **Change Username**: Update username for any user account
-- **User Persistence**: All user data stored in separate JSON file
+<br/>
 
-### Book Management (Admin & Librarian)
+## 📋 Table of Contents
 
-- **Add Books**: Register new books with title, author, ISBN, quantity, and shelf location
-- **Update Books**: Modify any book attribute (title, author, ISBN, quantity, shelf number)
-- **Remove Books**: Delete books from the library collection
-- **Display All Books**: View complete library inventory with details
-- **Search Books**: Find books by title, author, or ISBN
-- **Find Books by Shelf**: Locate all books on a specific shelf
+- [Overview](#-overview)
+- [Tech Stack](#️-tech-stack)
+- [Features](#-features)
+- [Database Schema](#️-database-schema)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Usage Guide](#-usage-guide)
+- [Default Credentials](#-default-credentials)
 
-### Book Circulation Management (Librarian & Student)
+<br/>
 
-- **Issue Books**: Issue books to registered students only (validates student existence)
-- **On-the-Fly Registration**: Create new student accounts during book issuing if needed (Librarian only)
-- **Borrow Books**: Students can directly borrow available books
-- **Return Books**: Process book returns and update inventory
-- **View Issued Books History**: Complete log of all book transactions with foreign key lookups (Librarian)
-- **View Borrowed Books**: Students can see all their currently borrowed books
-- **Search Issued Books**: Find all books issued to a specific student by roll number (Librarian)
+## 🔍 Overview
 
-### Data Persistence
+This Library Management System is a **CLI-based application** that helps libraries manage their book inventory, user accounts, and book circulation — all backed by a PostgreSQL relational database.
 
-- **Dual JSON Storage**: Separate files for library data and user data
-- **Foreign Key Relationships**: Efficient data referencing (stores only IDs, not duplicate data)
-- **Auto-save**: All changes immediately persisted to JSON
-- **Auto-load**: Previous data restored on program startup
-- **Data Integrity**: Comprehensive error handling and validation
+The system supports **three user roles** — Admin, Librarian, and Student — each with tailored permissions and dashboards. Passwords are securely hashed using `bcrypt`, and all data is validated through `Pydantic` models before reaching the database.
 
-## 🏗️ Architecture
+### Why This Project?
 
-### Project Structure
+| Problem | Solution |
+|---|---|
+| Manual book tracking is error-prone | Automated inventory with real-time quantity updates |
+| No accountability for borrowed books | Full transaction history with timestamps |
+| Shared credentials are insecure | Role-based access with hashed passwords |
+| Difficult to search large catalogs | Search by title, author, or ISBN instantly |
+
+<br/>
+
+## 🛠️ Tech Stack
+
+| Component | Technology | Purpose |
+|---|---|---|
+| **Language** | Python 3.14+ | Core application logic |
+| **Database** | PostgreSQL | Persistent, relational data storage |
+| **DB Adapter** | `psycopg` (v3) | Modern async-ready PostgreSQL driver |
+| **Validation** | `pydantic` (v2) | Data models & input validation |
+| **Security** | `bcrypt` | One-way password hashing |
+
+<br/>
+
+## ✨ Features
+
+### 🔐 Authentication & Security
+
+- **Secure Login** — Passwords are hashed with `bcrypt` before storage; plaintext passwords are never saved.
+- **Role-Based Access** — Three distinct roles (Admin, Librarian, Student) with different permission levels.
+- **Auto-Setup** — On first run with an empty database, a default Admin account is created automatically.
+
+---
+
+### 👑 Admin Panel
+
+Admins have full control over the system:
+
+| Action | Description |
+|---|---|
+| Add / Remove Books | Manage the entire library catalog |
+| Add Students | Register new student accounts |
+| Add Librarians | Register new librarian accounts |
+| View All Users | See all admins, librarians, and students at a glance |
+| Change Credentials | Update any user's username or password |
+
+---
+
+### 👨‍💼 Librarian Panel
+
+Librarians handle day-to-day library operations:
+
+| Action | Description |
+|---|---|
+| Add / Update / Remove Books | Full book catalog management |
+| Issue Books | Check out books to registered students |
+| Return Books | Process book returns with automatic timestamp |
+| View Issue History | See all current and past transactions |
+| Search by Roll Number | Find all books issued to a specific student |
+| Search by Shelf | Locate books on a specific shelf |
+| Add Students | Register new students on the spot |
+| View All Students | List every registered student |
+| Change Credentials | Update own username or password |
+
+---
+
+### 🎓 Student Panel
+
+Students can browse, borrow, and manage their accounts:
+
+| Action | Description |
+|---|---|
+| View Available Books | Browse the complete library catalog |
+| Search Books | Find books by title, author, or ISBN |
+| Borrow a Book | Self-service book checkout |
+| Return a Book | Process a return from the student dashboard |
+| View Borrowed Books | See currently borrowed and past reads |
+| Change Credentials | Update own username or password |
+
+---
+
+### 📖 Book Circulation Logic
+
+- **Issue** — Decrements book quantity in real-time when a book is checked out.
+- **Return** — Increments quantity back and stamps the `returned_at` timestamp.
+- **History** — Records are **never deleted**. Returned books keep a full audit trail for librarians.
+
+<br/>
+
+## 🗄️ Database Schema
+
+The system uses a **normalized relational schema** with foreign key constraints:
+
+```mermaid
+erDiagram
+    USERS {
+        int id PK
+        varchar name
+        varchar username UK
+        varchar password
+        timestamp created_at
+        timestamp updated_at
+    }
+    ADMINS {
+        int admin_id PK
+        int user_id FK
+    }
+    LIBRARIANS {
+        int id PK
+        int user_id FK
+        varchar employee_id
+    }
+    STUDENTS {
+        int id PK
+        int user_id FK
+        varchar rollnumber
+    }
+    BOOKS {
+        bigint isbn PK
+        varchar title
+        varchar author
+        int quantity
+        int shelf_number
+    }
+    ISSUED_BOOKS {
+        int id PK
+        int student_id FK
+        bigint book_isbn FK
+        timestamp issued_at
+        timestamp returned_at
+    }
+
+    USERS ||--o| ADMINS : "has"
+    USERS ||--o| LIBRARIANS : "has"
+    USERS ||--o| STUDENTS : "has"
+    STUDENTS ||--o{ ISSUED_BOOKS : "borrows"
+    BOOKS ||--o{ ISSUED_BOOKS : "is issued"
+```
+
+> **Key Design Decisions:**
+> - `users` is the **base table** — every person in the system has a row here.
+> - Role-specific tables (`admins`, `librarians`, `students`) are linked via `user_id` foreign key.
+> - `issued_books` acts as a **transaction ledger** — returning a book sets `returned_at` instead of deleting the row.
+
+<br/>
+
+## 📁 Project Structure
 
 ```
-project1/
-├── main.py              # Entry point - UI and role-based menu systems
-├── library.py           # Library class - Core business logic
-├── book.py              # Book class - Data model
-├── person.py            # Person class hierarchy - User models (Admin, Librarian, Student)
-├── library_data.json    # Persistent storage for books and issued books (auto-generated)
-├── users_data.json      # Persistent storage for users (auto-generated)
-└── README.md            # Project documentation
+library-management-system/
+│
+├── main.py            → CLI entry point & menu routing
+├── library.py         → Core business logic & SQL queries
+├── models.py          → Pydantic data models & password utilities
+├── database.py        → PostgreSQL connection configuration
+│
+├── pyproject.toml     → Project metadata & dependencies
+├── uv.lock            → Dependency lock file
+└── README.md          → You are here!
 ```
 
-### Class Design
+| File | Responsibility |
+|---|---|
+| `main.py` | Handles all user interaction — login flow, menu display, and input collection |
+| `library.py` | Contains the `Library` class with all database operations (CRUD, search, issue/return) |
+| `models.py` | Defines `User`, `Admin`, `Librarian`, `Student`, `Book`, and `IssuedBook` Pydantic models |
+| `database.py` | Manages the PostgreSQL connection using `psycopg` with dictionary row factory |
 
-#### **Person Class Hierarchy** (`person.py`)
-
-Abstract base class with three concrete implementations:
-
-**Person (Abstract Base Class)**
-
-- `name`: User's full name
-- `user_id`: Login username (unique identifier)
-- `password`: User password
-- `get_role()`: Abstract method returning user role
-- `to_dict()`: Serialization for JSON storage
-
-**Admin Class**
-
-- `admin_id`: Unique admin identifier
-- Full access to user management and book operations
-
-**Librarian Class**
-
-- `employee_id`: Unique employee identifier
-- Access to book management and circulation operations
-
-**Student Class**
-
-- `rollnumber`: Unique student roll number
-- Access to book browsing and personal account management
-
-#### **Book Class** (`book.py`)
-
-Represents individual books with attributes:
-
-- `title`: Book title
-- `author`: Author name
-- `isbn`: International Standard Book Number (unique identifier)
-- `quantity`: Available copies
-- `shelfNumber`: Physical location in library
-
-Methods:
-
-- `to_dict()`: Serializes book data for JSON storage
-- `__str__()`: Formatted string representation for display
-
-#### **Library Class** (`library.py`)
-
-Manages the entire library system with three main collections:
-
-- `_books`: List of all Book objects
-- `_issuedBooks`: List of issue records with **foreign keys only** (rollNo, isbn, timestamp)
-- `_users`: List of all Person objects (Admin, Librarian, Student)
-
-**User Management Methods:**
-
-- `login()`: Authenticate users by username and password
-- `add_admin()`: Register new admin accounts
-- `add_librarian()`: Register new librarian accounts
-- `add_student()`: Register new student accounts
-- `view_all_users()`: Display all users organized by role
-- `change_password()`: Update user password with old password verification
-- `change_username()`: Update user's username with duplicate validation
-
-**Book Management Methods:**
-
-- `add_books()`: Add new books with validation
-- `update_book()`: Modify book attributes
-- `remove_books()`: Delete books from inventory
-- `display_books()`: Show all books
-- `search_books()`: Search by multiple criteria
-- `find_shelf_books()`: Locate books by shelf number
-
-**Circulation Methods:**
-
-- `issue_book()`: Issue books to **registered students only** with validation
-- `return_book()`: Process returns and update quantities
-- `check_issue_books()`: View complete issue history (uses foreign key lookups)
-- `check_issue_books_finder()`: Search issues by roll number (uses foreign key lookups)
-- `view_borrowed_books()`: Display all books borrowed by a specific student
-
-**Data Persistence Methods:**
-
-- `save_data()`: Save books and issued books to `library_data.json`
-- `load_data()`: Restore books and issued books from JSON
-- `save_users_data()`: Save users to `users_data.json`
-- `load_users_data()`: Restore users from JSON
-
-### Data Flow
-
-```
-User Login (main.py)
-    ↓
-Authentication (library.login())
-    ↓
-Role Detection (Admin/Librarian/Student)
-    ↓
-Role-Specific Panel
-    ↓
-Library Methods (library.py)
-    ↓
-Book/Person Objects (book.py/person.py)
-    ↓
-Dual JSON Storage (library_data.json + users_data.json)
-```
+<br/>
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.6 or higher
-- No external dependencies required (uses standard library only)
+Before you begin, make sure you have:
 
-### Installation
+- ✅ **Python 3.14** or higher installed
+- ✅ **PostgreSQL** server running (locally or remotely)
+- ✅ A database named `library_management_system` created in PostgreSQL
 
-1. Clone or download the project files
-2. Ensure all four Python files are in the same directory:
-   - `main.py`
-   - `library.py`
-   - `book.py`
-   - `person.py`
+### Step 1 — Clone the Repository
 
-### Running the Program
+```bash
+git clone https://github.com/hassanwaheedali/project1.git
+cd project1
+```
+
+### Step 2 — Install Dependencies
+
+Using **pip**:
+
+```bash
+pip install psycopg[binary] bcrypt pydantic
+```
+
+Or using **uv** (recommended):
+
+```bash
+uv sync
+```
+
+### Step 3 — Configure the Database
+
+Open `database.py` and update the connection settings to match your PostgreSQL setup:
+
+```python
+conn = psycopg.connect(
+    host="127.0.0.1",           # Your database host
+    dbname="library_management_system",  # Database name
+    user="postgres",            # Your PostgreSQL username
+    password="your_password",   # Your PostgreSQL password
+    port=5432,                  # Your PostgreSQL port
+)
+```
+
+### Step 4 — Set Up the Database Tables
+
+Create the required tables in your `library_management_system` database:
+
+```sql
+-- Base users table
+CREATE TABLE users (
+    id       SERIAL PRIMARY KEY,
+    name     VARCHAR(50)  NOT NULL,
+    username VARCHAR(50)  NOT NULL UNIQUE,
+    password VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Role-specific tables
+CREATE TABLE admins (
+    admin_id SERIAL PRIMARY KEY,
+    user_id  INT NOT NULL UNIQUE REFERENCES users(id)
+);
+
+CREATE TABLE librarians (
+    id          SERIAL PRIMARY KEY,
+    user_id     INT NOT NULL UNIQUE REFERENCES users(id),
+    employee_id VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE students (
+    id         SERIAL PRIMARY KEY,
+    user_id    INT NOT NULL UNIQUE REFERENCES users(id),
+    rollnumber VARCHAR(50) NOT NULL
+);
+
+-- Book catalog
+CREATE TABLE books (
+    isbn         BIGINT PRIMARY KEY,
+    title        VARCHAR(255) NOT NULL,
+    author       VARCHAR(255) NOT NULL,
+    quantity     INT NOT NULL CHECK (quantity >= 0),
+    shelf_number INT NOT NULL CHECK (shelf_number >= 0)
+);
+
+-- Transaction ledger
+CREATE TABLE issued_books (
+    id         SERIAL PRIMARY KEY,
+    student_id INT    NOT NULL REFERENCES users(id),
+    book_isbn  BIGINT NOT NULL REFERENCES books(isbn),
+    issued_at  TIMESTAMP DEFAULT NOW(),
+    returned_at TIMESTAMP
+);
+
+-- View: User profiles with role info
+CREATE VIEW vw_user_profiles AS
+SELECT u.*, a.admin_id, l.employee_id, s.rollnumber
+FROM users u
+LEFT JOIN admins     a ON a.user_id = u.id
+LEFT JOIN librarians l ON l.user_id = u.id
+LEFT JOIN students   s ON s.user_id = u.id;
+
+-- View: Issued books with details
+CREATE VIEW vw_issued_books_details AS
+SELECT
+    i.id, i.book_isbn, i.issued_at, i.returned_at,
+    b.title AS book_title, b.author AS book_author,
+    u.name  AS student_name, s.rollnumber
+FROM issued_books i
+INNER JOIN students s ON i.student_id = s.user_id
+INNER JOIN books    b ON i.book_isbn  = b.isbn
+INNER JOIN users    u ON s.user_id    = u.id;
+```
+
+### Step 5 — Run the Application
 
 ```bash
 python main.py
 ```
 
-### Default Login Credentials
-
-**Admin Account** (pre-configured):
-
-- Username: `admin`
-- Password: `admin123`
-
-_Note: Use admin account to create librarian and student accounts_
+<br/>
 
 ## 📖 Usage Guide
 
 ### Login Flow
 
-1. Enter username
-2. Enter password
-3. System detects role and redirects to appropriate panel
-
-### Admin Panel Options
+When the application starts, you'll be greeted with a login prompt:
 
 ```
-Book Management:
-1. Add Book
-2. Remove Book
-3. Display Books
-4. Search Books
+==================================================
+--- Welcome to the Library Management System! ---
+==================================================
 
-User Management:
-5. Add Student
-6. Add Librarian
-7. View All Users
-8. Change Password
-9. Change Username
-10. Logout
+🔐 LOGIN
+==================================================
+Enter your username: admin
+Enter your password: admin
+✅ Login Successful! Welcome, Admin (Admin)
 ```
 
-### Librarian Panel Options
+After login, the system automatically routes you to your role-specific panel (Admin, Librarian, or Student).
 
-```
-Book Management:
-1. Add Book
-2. Update Book
-3. Display Books
-4. Search Books
-5. Remove Book
+### Typical Workflows
 
-Book Transactions:
-6. Issue Book
-7. Return Book
-8. Check Issued Books History
-9. Find Issued Books by Roll Number
-10. Find Books in Shelf Number
+**Adding a new student and issuing a book:**
 
-User Management:
-11. Add Student
-12. View All Students
+1. Log in as **Admin** or **Librarian**
+2. Select **"Add Student"** → Enter name, username, password, and roll number
+3. Select **"Issue Book"** → Enter the student's roll number and the book's ISBN
+4. The book quantity decreases by 1 automatically ✅
 
-Account Settings:
-13. Change Password
-14. Change Username
+**Returning a book:**
 
-15. Logout
-```
+1. Log in as **Librarian** or **Student**
+2. Select **"Return Book"** → Enter the ISBN (and roll number if librarian)
+3. The `returned_at` timestamp is recorded and quantity is restored ✅
 
-### Student Panel Options
+<br/>
 
-```
-Book Browsing:
-1. View Available Books
-2. Search Books
+## 🔑 Default Credentials
 
-Book Transactions:
-3. Borrow Book
-4. Return Book
-5. View Borrowed Books
+On first run with an empty database, the system automatically creates a master admin:
 
-Account Settings:
-6. Change Password
-7. Change Username
+| Field | Value |
+|---|---|
+| **Username** | `admin` |
+| **Password** | `admin` |
 
-8. Logout
-```
+> [!CAUTION]
+> **Change the default password immediately after your first login!** Navigate to *Account Settings → Change Password* inside the Admin Panel.
 
-### Example Workflows
-
-#### First Time Setup (Admin)
-
-1. Login with default admin credentials
-2. Add librarian accounts (Option 6)
-3. Add initial student accounts (Option 5)
-4. Add books to library (Option 1)
-
-#### Issuing a Book (Librarian)
-
-1. Login as librarian
-2. Select option `6` (Issue Book)
-3. Enter student roll number
-4. Enter book ISBN
-5. **System validates:**
-   - Student exists in database
-   - Book exists and is available
-6. If student doesn't exist, option to create account on-the-fly
-7. System decrements quantity and logs transaction
-
-#### Borrowing a Book (Student)
-
-1. Login as student
-2. Select option `3` (Borrow Book)
-3. Enter book ISBN
-4. **System validates:**
-   - Book exists and is available
-   - Student account is active
-5. System issues book and decrements quantity
-6. Transaction logged with timestamp
-
-#### Returning a Book (Student)
-
-1. Login as student
-2. Select option `4` (Return Book)
-3. Enter book ISBN of borrowed book
-4. System validates the issue record
-5. Book quantity incremented
-6. Issue record removed from system
-
-#### Viewing Borrowed Books (Student)
-
-1. Login as student
-2. Select option `5` (View Borrowed Books)
-3. System displays all currently borrowed books with:
-   - Book title
-   - ISBN
-   - Issue date and time
-
-#### Viewing Issued Books (Librarian)
-
-1. Login as librarian
-2. Select option `8` (Check Issued Books History)
-3. System displays all transactions with:
-   - Timestamp
-   - Student name (looked up via foreign key)
-   - Book title (looked up via foreign key)
-   - Roll number and ISBN
-
-#### Changing Password (All Users)
-
-1. Select "Change Password" from respective panel
-2. Enter old password
-3. Enter new password
-4. System validates old password and updates
-5. Changes saved to users_data.json
-
-#### Changing Username (All Users)
-
-1. Select "Change Username" from respective panel
-2. Enter new desired username
-3. System checks for duplicate usernames
-4. If available, username updated
-5. Changes saved to users_data.json
-
-## 🔒 Data Validation
-
-The system includes comprehensive input validation:
-
-- ✅ User authentication (username/password verification)
-- ✅ Old password verification for password changes
-- ✅ Duplicate username prevention for username changes
-- ✅ **Student existence validation** before issuing books
-- ✅ Duplicate ISBN prevention
-- ✅ Duplicate username/user_id prevention
-- ✅ Negative quantity/shelf number checks
-- ✅ Book availability verification before issuing
-- ✅ ISBN and quantity type validation
-- ✅ Roll number verification for returns
-- ✅ Issue record validation for returns
-- ✅ Role-based access control
-- ✅ Type consistency for roll numbers (string) and ISBNs (integer)
-
-## 💾 Data Storage
-
-The system uses **two separate JSON files** for data persistence:
-
-### `library_data.json`
-
-Stores books and issued books with **foreign key relationships**:
-
-```json
-{
-  "Books": [
-    {
-      "title": "The Alchemist",
-      "author": "Paulo Coelho",
-      "isbn": 9783161484100,
-      "quantity": 36,
-      "shelfNumber": 5
-    }
-  ],
-  "issuedBooks": [
-    {
-      "timeStamp": "2026-01-23 14:30:15",
-      "rollNo": "S12345",
-      "isbn": 9783161484100
-    }
-  ]
-}
-```
-
-**Note**: Issued books store **only foreign keys** (rollNo, isbn). Student names and book titles are looked up dynamically from their respective sources, ensuring data integrity when updates occur.
-
-### `users_data.json`
-
-Stores all user accounts with username-based identification:
-
-```json
-{
-  "Users": [
-    {
-      "name": "Default Admin",
-      "username": "admin",
-      "password": "admin123",
-      "admin_id": 1,
-      "role": "Admin"
-    },
-    {
-      "name": "John Smith",
-      "username": "lib001",
-      "password": "pass123",
-      "employee_id": "EMP001",
-      "role": "Librarian"
-    },
-    {
-      "name": "Alice Johnson",
-      "username": "alice_j",
-      "password": "student123",
-      "rollnumber": "S12345",
-      "role": "Student"
-    }
-  ]
-}
-```
-
-**Note**: The system supports backward compatibility with old JSON files that use `user_id` instead of `username`.
-
-## 🎯 Key Features Highlights
-
-- **Complete Student Panel**: Fully functional interface for students to browse, borrow, and manage their book transactions
-- **Role-Based Access Control**: Separate interfaces for Admin, Librarian, and Student with appropriate permissions
-- **Authentication System**: Secure login with username/password
-- **Password & Username Management**: All users can change their passwords and usernames with validation
-- **Object-Oriented Design**: Clean separation of concerns with Person hierarchy, Book, and Library classes
-- **Foreign Key Relationships**: Efficient data storage mimicking database design principles
-- **Dual Data Persistence**: Separate JSON files for library data and user data
-- **User-Friendly Interface**: Clear menu systems with emoji indicators for each role
-- **Error Handling**: Comprehensive validation and error messages
-- **Transaction Tracking**: Complete audit trail of book issues/returns with timestamps
-- **Dynamic Data Lookup**: Student names and book titles retrieved via foreign keys to ensure data consistency
-- **Flexible Search**: Search books by multiple criteria simultaneously
-- **On-Demand Registration**: Create student accounts during book issuing workflow (Librarian feature)
-- **No Infinite Recursion**: Proper logout and re-login flow without stack overflow issues
-- **Type Consistency**: Roll numbers as strings, ISBNs as integers for reliable comparisons
-- **Backward Compatibility**: Supports old JSON files with `user_id` field
-
-## 🛠️ Technical Implementation
-
-- **Language**: Python 3
-- **Data Storage**: Dual JSON files (library_data.json, users_data.json)
-- **Design Pattern**: Object-Oriented Programming (OOP) with inheritance
-- **Architecture**: Role-based access control (RBAC)
-- **Data Relationships**: Foreign key pattern for referential integrity
-- **Time Handling**: datetime module for timestamp generation
-- **Data Structure**: Lists and dictionaries for efficient data management
-- **Abstraction**: Abstract base class (ABC) for Person hierarchy
-
-### Student Panel Options
-
-```
-Book Browsing:
-1. View Available Books
-2. Search Books
-
-Book Transactions:
-3. Borrow Book
-4. Return Book
-5. View Borrowed Books
-
-Account Settings:
-6. Change Password
-7. Change Username
-
-8. Logout
-```
-
-Students have full access to browse books, borrow/return books, view their borrowing history, and manage their account settings.
-
-## 🔮 Future Enhancements
-
-### Potential Improvements for Future Versions
-
-- Password hashing for enhanced security (bcrypt, SHA-256)
-- Fine calculation for overdue books with configurable rates
-- Book reservation system (reserve books that are currently issued)
-- Due date system with automatic tracking
-- Email/SMS notifications for overdue books and reservations
-- Multiple library branches support with inter-branch transfers
-- Database integration (SQLite/PostgreSQL) for better scalability
-- Web-based interface (Flask/Django/FastAPI)
-- RESTful API for mobile app integration
-- Barcode/QR code scanning support for quick book identification
-- Advanced reporting and analytics dashboard
-- Export functionality (CSV, Excel, PDF reports)
-- User activity logs and comprehensive audit trails
-- Book cover image support with preview
-- Book ratings and reviews system
-- Popular books and recommendation engine
-- Multi-language support (i18n)
-- Dark mode UI option
-- Backup and restore functionality
-- Integration with online book databases (Google Books API, Open Library)
-- Prevent duplicate book borrowing (student can't borrow same book twice)
-- Book renewal system (extend borrowing period)
-- Reading history and statistics for students
-- Library announcements and notifications system
-
-## 🔐 Security Notes
-
-**Current Implementation:**
-
-- Passwords are stored in plain text in `users_data.json`
-- Default admin credentials should be changed after first login
-- User permissions are enforced through role-based menus
-
-**Recommended for Production:**
-
-- Implement password hashing (bcrypt, SHA-256)
-- Add session management
-- Implement password strength requirements
-- Add account lockout after failed login attempts
-- Use environment variables for sensitive data
+<br/>
 
 ---
 
-## 👨‍💻 Developer
+<div align="center">
 
-**Hassan Waheed Ali**
+**Built with ❤️ using Python & PostgreSQL**
 
-GitHub: [github.com/hassanwaheedali](https://github.com/hassanwaheedali/)
-
----
-
-_Built with ❤️ using Python_
+</div>
